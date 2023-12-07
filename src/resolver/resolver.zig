@@ -954,7 +954,8 @@ pub const Resolver = struct {
     }
 
     pub fn resolve(r: *ThisResolver, source_dir: string, import_path: string, kind: ast.ImportKind) !Result {
-        switch (r.resolveAndAutoInstall(source_dir, import_path, kind, GlobalCache.disable)) {
+        switch (r.resolveAndAutoInstall(source_dir, import_path, kind, GlobalCache.auto)) {
+            // switch (r.resolveAndAutoInstall(source_dir, import_path, kind, GlobalCache.disable)) {
             .success => |result| return result,
             .pending, .not_found => return error.ModuleNotFound,
 
@@ -1741,6 +1742,13 @@ pub const Resolver = struct {
 
         dir_info = source_dir_info;
 
+        var liyub1 = global_cache.canUse(any_node_modules_folder);
+        _ = liyub1;
+        var liyub2 = r.usePackageManager();
+        _ = liyub2;
+        var liyub3 = esm_ != null;
+        _ = liyub3;
+
         // this is the magic!
         if (global_cache.canUse(any_node_modules_folder) and r.usePackageManager() and esm_ != null) {
             if (comptime bun.fast_debug_build_mode and bun.fast_debug_build_cmd != .RunCommand) unreachable;
@@ -2354,6 +2362,7 @@ pub const Resolver = struct {
         global_cache: GlobalCache,
     ) MatchResult.Union {
         if (isPackagePath(import_path)) {
+            r.opts.global_cache = GlobalCache.auto;
             return r.loadNodeModules(import_path, kind, source_dir_info, global_cache, false);
         } else {
             const paths = [_]string{ source_dir_info.abs_path, import_path };
