@@ -357,7 +357,19 @@ pub const Bundler = struct {
     }
 
     pub inline fn resolveEntryPoint(bundler: *Bundler, entry_point: string) anyerror!_resolver.Result {
-        return bundler.resolver.resolve(bundler.fs.top_level_dir, entry_point, .entry_point) catch |err| {
+        var abs_entry_point = brk: {
+            if (!strings.hasPrefix(entry_point, "/")) {
+                // if not abs path, convert to abs path here
+                var cwd = try bun.getcwdAlloc(bundler.allocator);
+                defer bundler.allocator.free(cwd);
+                var abspath = try std.fs.path.join(bundler.allocator, &.{ cwd, entry_point });
+                break :brk abspath;
+            } else {
+                break :brk try bundler.allocator.dupe(u8, entry_point);
+            }
+        };
+        defer bundler.allocator.free(abs_entry_point);
+        return bundler.resolver.resolve(bundler.fs.top_level_dir, abs_entry_point, .entry_point) catch |err| {
             const has_dot_slash_form = !strings.hasPrefix(entry_point, "./") and brk: {
                 return bundler.resolver.resolve(bundler.fs.top_level_dir, try strings.append(bundler.allocator, "./", entry_point), .entry_point) catch break :brk false;
             };
