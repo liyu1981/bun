@@ -34,9 +34,6 @@ const Router = @import("../router.zig");
 const BundleV2 = @import("../bundler/bundle_v2.zig").BundleV2;
 var estimated_input_lines_of_code_: usize = undefined;
 
-const Config = @import("../bun.js/config.zig");
-const GlobalCache = @import("../resolver/resolver.zig").GlobalCache;
-
 pub const BuildCommand = struct {
     pub fn exec(
         ctx_: Command.Context,
@@ -51,14 +48,11 @@ pub const BuildCommand = struct {
             ctx.args.target = .bun;
         }
 
-        // var this_bundler = try bundler.Bundler.init(allocator, log, ctx.args, null);
-        var this_bundler = try bundler.Bundler.init(
-            allocator,
-            log,
-            try Config.configureTransformOptionsForBunVM(allocator, ctx.args),
-            null,
-        );
-        this_bundler.options.global_cache = GlobalCache.auto;
+        var this_bundler = try bundler.Bundler.init(allocator, log, ctx.args, null);
+
+        // use the global_cache options from ctx
+        this_bundler.options.global_cache = ctx.debug.global_cache;
+        this_bundler.resolver.opts.global_cache = ctx.debug.global_cache;
         this_bundler.resolver.env_loader = this_bundler.env;
 
         this_bundler.options.source_map = options.SourceMapOption.fromApi(ctx.args.source_map);

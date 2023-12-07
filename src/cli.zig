@@ -615,6 +615,10 @@ pub const Arguments = struct {
         var output_file: ?string = null;
 
         if (cmd == .BuildCommand) {
+            // default enable global cache for build
+            // TODO: accept cmd params
+            ctx.debug.global_cache = options.GlobalCache.auto;
+
             ctx.bundler_options.transform_only = args.flag("--no-bundle");
 
             const minify_flag = args.flag("--minify");
