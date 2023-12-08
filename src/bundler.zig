@@ -360,10 +360,8 @@ pub const Bundler = struct {
         var abs_entry_point = brk: {
             if (!strings.hasPrefix(entry_point, "/")) {
                 // if not abs path, convert to abs path here
-                var cwd = try bun.getcwdAlloc(bundler.allocator);
-                defer bundler.allocator.free(cwd);
-                var abspath = try std.fs.path.join(bundler.allocator, &.{ cwd, entry_point });
-                break :brk abspath;
+                var abs_path = try std.fs.path.resolve(bundler.allocator, &.{ bundler.options.root_dir, entry_point });
+                break :brk abs_path;
             } else {
                 break :brk try bundler.allocator.dupe(u8, entry_point);
             }

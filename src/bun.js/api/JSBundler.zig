@@ -428,12 +428,29 @@ pub const JSBundler = struct {
                 };
             }
 
+            // enable use install to specify whether we will use global_cache, same to --install option in cli
             if (try config.getOptional(globalThis, "install", ZigString.Slice)) |slice| {
                 defer slice.deinit();
                 if (options.GlobalCache.Map.get(slice.slice())) |result| {
                     this.install = result;
                 } else {
-                    globalThis.throwInvalidArguments("Expected install to have one value of \"auto\" (default, auto-installs when no node_modules), \"fallback\" (missing packages only), \"force\" (always), \"disable\" if specified.", .{});
+                    globalThis.throwInvalidArguments("Expected install to have one value of \"auto\" (default, auto-installs when no node_modules), \"fallback\" (missing packages only), \"force\" (always), \"disable\", but got \"{s}\"", .{slice.slice()});
+                    return error.JSError;
+                }
+            }
+
+            // enable specify rootDir in config to change the cwd like in --cwd in cli
+            if (try config.getOptional(globalThis, "rootDir", ZigString.Slice)) |slice| {
+                defer slice.deinit();
+                if (slice.len > 0 and slice.slice()[0] == '/') {
+                    _ = std.fs.accessAbsolute(slice.slice(), .{}) catch {
+                        globalThis.throwInvalidArguments("Expected rootDir to be valid absolute path, but \"{s}\" does not exist.", .{slice.slice()});
+                        return error.JSError;
+                    };
+                    this.rootdir.reset();
+                    try this.rootdir.appendSliceExact(slice.slice());
+                } else {
+                    globalThis.throwInvalidArguments("Expected rootDir to be absolute pathm, but got \"{s}\"", .{slice.slice()});
                     return error.JSError;
                 }
             }
