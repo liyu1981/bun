@@ -66,6 +66,7 @@ pub const JSBundler = struct {
         external: bun.StringSet = bun.StringSet.init(bun.default_allocator),
         source_map: options.SourceMapOption = .none,
         public_path: OwnedString = OwnedString.initEmpty(bun.default_allocator),
+        install: options.GlobalCache = .auto,
 
         pub const List = bun.StringArrayHashMapUnmanaged(Config);
 
@@ -425,6 +426,16 @@ pub const JSBundler = struct {
                     .extensions = loader_names,
                     .loaders = loader_values,
                 };
+            }
+
+            if (try config.getOptional(globalThis, "install", ZigString.Slice)) |slice| {
+                defer slice.deinit();
+                if (options.GlobalCache.Map.get(slice.slice())) |result| {
+                    this.install = result;
+                } else {
+                    globalThis.throwInvalidArguments("Expected install to have one value of \"auto\" (default, auto-installs when no node_modules), \"fallback\" (missing packages only), \"force\" (always), \"disable\" if specified.", .{});
+                    return error.JSError;
+                }
             }
 
             return this;

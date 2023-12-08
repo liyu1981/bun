@@ -1613,6 +1613,12 @@ pub const BundleV2 = struct {
             },
             completion.env,
         );
+
+        // enable bundler.options.global_cache & resolver.opts.global_cache according to config.install
+        bundler.options.global_cache = config.install;
+        bundler.resolver.opts.global_cache = config.install;
+        bundler.resolver.env_loader = bundler.env;
+
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;
         bundler.options.react_server_components = config.server_components.client.items.len > 0 or config.server_components.server.items.len > 0;
