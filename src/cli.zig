@@ -209,6 +209,7 @@ pub const Arguments = struct {
         clap.parseParam("--minify-whitespace              Minify whitespace") catch unreachable,
         clap.parseParam("--minify-identifiers             Minify identifiers") catch unreachable,
         clap.parseParam("--dump-environment-variables") catch unreachable,
+        clap.parseParam("--install <STR>                  Configure auto-install behavior. One of \"auto\" (default, auto-installs when no node_modules), \"fallback\" (missing packages only), \"force\" (always).") catch unreachable,
     };
     pub const build_params = build_only_params ++ transpiler_params_ ++ base_params_;
 
@@ -598,8 +599,19 @@ pub const Arguments = struct {
 
         if (cmd == .BuildCommand) {
             // default enable global cache for build
-            // TODO: accept cmd params
             ctx.debug.global_cache = options.GlobalCache.auto;
+            if (args.option("--install")) |enum_value| {
+                // -i=auto --install=force, --install=disable
+                if (options.GlobalCache.Map.get(enum_value)) |result| {
+                    ctx.debug.global_cache = result;
+                    // -i, --install
+                } else if (enum_value.len == 0) {
+                    ctx.debug.global_cache = options.GlobalCache.force;
+                } else {
+                    Output.prettyErrorln("Invalid value for --install: \"{s}\". Must be either \"auto\", \"fallback\", \"force\", or \"disable\"\n", .{enum_value});
+                    Global.exit(1);
+                }
+            }
 
             ctx.bundler_options.transform_only = args.flag("--no-bundle");
 
