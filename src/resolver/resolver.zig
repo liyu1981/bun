@@ -547,7 +547,15 @@ pub const Resolver = struct {
             const pm = PackageManager.initWithRuntime(
                 this.log,
                 this.opts.install,
-                this.allocator,
+                // liyu: Do not use this.allocator but bun.default_allocator here because
+                // 1. if this is not in the thread, resolver should have already in using
+                //    bun.default_allocator
+                // 2. if this is in build thread, resolver is using Threadlocal allocator,
+                //    but for our package manager (as it is shared service) should use
+                //    bun.default_allocator
+                // TODO: valgrind this change, is it right? no leaks?
+                // this.allocator,
+                bun.default_allocator,
                 .{},
                 this.env_loader.?,
             ) catch @panic("Failed to initialize package manager");
