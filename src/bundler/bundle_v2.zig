@@ -1649,6 +1649,9 @@ pub const BundleV2 = struct {
         this.completion = completion;
         completion.bundler = this;
 
+        // enable multi memory output by telling linker
+        this.linker.in_build_script = true;
+
         errdefer {
             var out_log = Logger.Log.init(bun.default_allocator);
             this.bundler.log.appendToWithRecycled(&out_log, true) catch @panic("OOM");
@@ -3557,6 +3560,10 @@ const LinkerContext = struct {
     /// This will eventually be used for reference-counting LinkerContext
     /// to know whether or not we can free it safely.
     pending_task_count: std.atomic.Atomic(u32) = std.atomic.Atomic(u32).init(0),
+
+    /// Whether we are invoked by `bun run build.ts/js`, as if that we can
+    /// enable multiple in memory outputs
+    in_build_script: bool = false,
 
     pub const LinkerOptions = struct {
         output_format: options.OutputFormat = .esm,
@@ -8924,7 +8931,7 @@ const LinkerContext = struct {
 
         const root_path = c.resolver.opts.output_dir;
 
-        if (root_path.len == 0 and c.parse_graph.additional_output_files.items.len > 0 and !c.resolver.opts.compile) {
+        if (root_path.len == 0 and c.parse_graph.additional_output_files.items.len > 0 and !c.resolver.opts.compile and !c.in_build_script) {
             try c.log.addError(null, Logger.Loc.Empty, "cannot write multiple output files without an output directory");
             return error.MultipleOutputFilesWithoutOutputDir;
         }
@@ -8934,6 +8941,7 @@ const LinkerContext = struct {
         } else {
 
             // In-memory build
+            // TODO(liyu): think about thow to get multiple in-memory build done
             for (chunks) |*chunk| {
                 var display_size: usize = 0;
 
