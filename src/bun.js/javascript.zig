@@ -1683,7 +1683,13 @@ pub const VirtualMachine = struct {
                     source_to_use,
                     normalized_specifier,
                     if (is_esm) .stmt else .require,
-                    .read_only,
+                    // liyu: do not know why originall it is hard coded .read_only here
+                    // while we have global_cache option in resolver
+                    // may be it causes problems as in issue 3216
+                    // but we will need this
+                    // TODO: redo this so not a conflict with issue 3216
+                    jsc_vm.bundler.resolver.opts.global_cache,
+                    // .read_only,
                 )) {
                     .success => |r| r,
                     .failure => |e| e,
