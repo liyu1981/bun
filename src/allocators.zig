@@ -480,6 +480,17 @@ pub fn BSSMap(comptime ValueType: type, comptime count: anytype, comptime store_
             return &instance;
         }
 
+        pub fn init_force(allocator: std.mem.Allocator) *Self {
+            // force to create a new instance, will be used in thread level
+            // bundler.resolver. In thread it will use arena allocator(so it is
+            // freed when thread done its work or exit)
+            instance = Self{
+                .index = IndexMap{},
+                .allocator = allocator,
+            };
+            return &instance;
+        }
+
         pub fn isOverflowing() bool {
             return instance.backing_buf_used >= @as(u16, count);
         }
