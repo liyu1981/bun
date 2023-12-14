@@ -22,6 +22,18 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "my bun bun debug",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["bun", "--install=fallback", "index.ts"],
+      "cwd": "${workspaceFolder}/../buntest/fallback_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "my web compiler debug",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--install=fallback", "src/server/index.ts"],
@@ -37,7 +49,7 @@
       "name": "my bun run debug",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--install=fallback", "index.ts"],
-      "cwd": "${workspaceFolder}/../buntest/fallback_test",
+      "cwd": "${workspaceFolder}/../buntest/vue_test",
       "console": "internalConsole",
       "env": {
         "BUN_CONFIG_MINIFY_WHITESPACE": "1"
@@ -49,7 +61,7 @@
       "name": "my bun build debug",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--install=fallback", "build.ts"],
-      "cwd": "${workspaceFolder}/../buntest/fallback_test",
+      "cwd": "${workspaceFolder}/../buntest/vue_test",
       "console": "internalConsole",
       "env": {
         "BUN_CONFIG_MINIFY_WHITESPACE": "1"
