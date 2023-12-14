@@ -47,10 +47,10 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "my bun run debug",
+      "name": "my bun build debug tailwind",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "index.ts"],
-      "cwd": "${workspaceFolder}/../buntest/vue_test",
+      "args": ["run", "--install=fallback", "build.ts"],
+      "cwd": "${workspaceFolder}/../buntest/tailwind_test",
       "console": "internalConsole",
       "env": {
         "BUN_CONFIG_MINIFY_WHITESPACE": "1"
@@ -59,7 +59,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "my bun build debug",
+      "name": "my bun build debug vue",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--install=fallback", "build.ts"],
       "cwd": "${workspaceFolder}/../buntest/vue_test",
