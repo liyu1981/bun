@@ -1749,6 +1749,11 @@ pub const Resolver = struct {
 
         dir_info = source_dir_info;
 
+        const flag1 = global_cache.canUse(any_node_modules_folder);
+        const flag2 = r.usePackageManager();
+        const flag3 = (esm_ != null);
+        dev("caniuse global cache for {s} because {any}, {any}, {any}", .{ import_path, flag1, flag2, flag3 });
+
         // this is the magic!
         if (global_cache.canUse(any_node_modules_folder) and r.usePackageManager() and esm_ != null) {
             if (comptime bun.fast_debug_build_mode and bun.fast_debug_build_cmd != .RunCommand) unreachable;
