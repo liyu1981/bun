@@ -603,9 +603,6 @@ pub const Resolver = struct {
             resolver_Mutex_loaded = true;
         }
 
-        const same_allocator = &bun.default_allocator == &allocator;
-        dev("init1 resolver with same allocator? {any}", .{same_allocator});
-
         return ThisResolver{
             .allocator = allocator,
             .dir_cache = DirInfo.HashMap.init(bun.default_allocator),
@@ -1766,7 +1763,8 @@ pub const Resolver = struct {
                         const resolve_from_lockfile = package_json.package_manager_package_id != Install.invalid_package_id;
 
                         if (resolve_from_lockfile) {
-                            const dependencies = &manager.lockfile.packages.items(.dependencies)[package_json.package_manager_package_id];
+                            const deps = manager.lockfile.packages.items(.dependencies);
+                            const dependencies = &deps[package_json.package_manager_package_id];
 
                             // try to find this package name in the dependencies of the enclosing package
                             dependencies_list = dependencies.get(manager.lockfile.buffers.dependencies.items);
@@ -2768,6 +2766,7 @@ pub const Resolver = struct {
             // We must initialize it as empty so that the result index is correct.
             // This is important so that browser_scope has a valid index.
             var dir_info_ptr = try if (r.in_thread) r.dir_cache_thread.put(&queue_top.result, DirInfo{}) else r.dir_cache.put(&queue_top.result, DirInfo{});
+            const parent_ptr = if (r.in_thread) r.dir_cache_thread.atIndex(top_parent.index) else r.dir_cache.atIndex(top_parent.index);
 
             try r.dirInfoUncached(
                 dir_info_ptr,
@@ -2775,7 +2774,7 @@ pub const Resolver = struct {
                 dir_entries_option,
                 queue_top.result,
                 cached_dir_entry_result.index,
-                r.dir_cache.atIndex(top_parent.index),
+                parent_ptr,
                 top_parent.index,
                 bun.toFD(open_dir.dir.fd),
                 null,
