@@ -47,6 +47,30 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "my bun build debug autoinstall:test.js",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--install=fallback", "test.js"],
+      "cwd": "${workspaceFolder}/../buntest/auto_install_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "my bun build debug autoinstall:child.js",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--install=fallback", "child.js"],
+      "cwd": "${workspaceFolder}/../buntest/auto_install_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "my bun build debug tailwind",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--install=fallback", "build.ts"],

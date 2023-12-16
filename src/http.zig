@@ -1702,7 +1702,14 @@ pub const AsyncHTTP = struct {
             .async_http_id = if (signals != null and signals.?.aborted != null) async_http_id.fetchAdd(1, .Monotonic) else 0,
         };
 
-        this.client = HTTPClient.init(allocator, method, url, headers, headers_buf, hostname, signals orelse this.signals);
+        // liyu: when we need to check manifest file for something like "autoprefixer@latest", if there is no .npm file
+        // in global cache, inside HTTPClient we will need to clone metadata, and it will use allocator. So that,
+        // this allocator should not be the allocator in param, as it is an arena allocator usually from main thread,
+        // so in debug build it will cause assertion error (and even more dangerous in release build as the assertion
+        // is off). So replace this to default_allocator to avoid the assertion error. (and cloned metadata will be
+        // released whenever a request is finished).
+        this.client = HTTPClient.init(default_allocator, method, url, headers, headers_buf, hostname, signals orelse this.signals);
+        // this.client = HTTPClient.init(allocator, method, url, headers, headers_buf, hostname, signals orelse this.signals);
         this.client.async_http_id = this.async_http_id;
         this.client.timeout = timeout;
         this.client.http_proxy = this.http_proxy;

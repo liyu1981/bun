@@ -2138,8 +2138,14 @@ pub const PackageManager = struct {
                                 Output.prettyErrorln("<d>[PackageManager]<r> waiting for {d} tasks\n", .{this.pending_tasks});
                             }
 
-                            if (this.pending_tasks > 0)
-                                this.sleep();
+                            // liyu: is there really need to put package manager to sleep? it will stuck in the next
+                            // mutex.lock inside runTasks. And if here put to sleep, when we start from transpiler,
+                            // as pm is shared to HTTPclient thread, in rare case it will wake HTTPClient instead
+                            // (which then cause here we stuck in a infinite loop, because task is consumed in another
+                            // thread)
+
+                            // if (this.pending_tasks > 0)
+                            //     this.sleep();
                         }
                     },
                 }
@@ -6208,6 +6214,7 @@ pub const PackageManager = struct {
             .workspaces = std.StringArrayHashMap(Semver.Version).init(allocator),
         };
         manager.lockfile = try allocator.create(Lockfile);
+        // try Lockfile.initEmpty(manager.lockfile, allocator);
 
         if (Output.enable_ansi_colors_stderr) {
             manager.progress = Progress{};
