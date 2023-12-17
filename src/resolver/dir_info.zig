@@ -125,5 +125,3 @@ pub fn getEnclosingBrowserScope(i: *const DirInfo) ?*DirInfo {
 // 3. Store whether a directory has been queried and whether that query was successful.
 // 4. Allocate onto the https://en.wikipedia.org/wiki/.bss#BSS_in_C instead of the heap, so we can avoid memory leaks
 pub const HashMap = allocators.BSSMap(DirInfo, Fs.Preallocate.Counts.dir_entry, false, 128, true);
-
-pub const ThreadHashMap = allocators.ThreadHashMap(DirInfo, Fs.Preallocate.Counts.dir_entry, true);
