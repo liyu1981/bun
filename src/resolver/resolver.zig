@@ -568,6 +568,25 @@ pub const Resolver = struct {
         if (this.in_bundler_thread) {
             // when in thread we reuse the global package manager
             return this.package_manager orelse brk: {
+                if (!PackageManager.instance_loaded) {
+                    bun.HTTPThread.init() catch unreachable;
+                    const pm = PackageManager.initWithRuntime(
+                        this.log,
+                        this.opts.install,
+                        // liyu: Do not use this.allocator but bun.default_allocator here because
+                        // 1. if this is not in the thread, resolver should have already in using
+                        //    bun.default_allocator
+                        // 2. if this is in build thread, resolver is using Threadlocal allocator,
+                        //    but for our package manager (as it is shared service) should use
+                        //    bun.default_allocator
+                        // TODO: valgrind this change, is it right? no leaks?
+                        // this.allocator,
+                        bun.default_allocator,
+                        .{},
+                        this.env_loader.?,
+                    ) catch @panic("Failed to initialize package manager");
+                    pm.onWake = this.onWakePackageManager;
+                }
                 const pm = &PackageManager.instance;
                 this.package_manager = pm;
                 break :brk pm;
@@ -1802,7 +1821,8 @@ pub const Resolver = struct {
                         }
 
                         for (dependencies_list, 0..) |dependency, dependency_id| {
-                            if (!strings.eqlLong(dependency.name.slice(string_buf), esm.name, true)) {
+                            const dep_name = dependency.name.slice(string_buf);
+                            if (!strings.eqlLong(dep_name, esm.name, true)) {
                                 continue;
                             }
 
@@ -3797,6 +3817,9 @@ pub const Resolver = struct {
 
         const rfs: *Fs.FileSystem.RealFS = &r.fs.fs;
         var entries = _entries.entries;
+
+        var ourcache = bufs(.path_in_global_disk_cache);
+        _ = ourcache;
 
         info.* = DirInfo{
             .abs_path = path,

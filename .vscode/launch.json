@@ -22,10 +22,10 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "my bun bun debug",
+      "name": "my debug single output",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["bun", "--install=fallback", "index.ts"],
-      "cwd": "${workspaceFolder}/../buntest/fallback_test",
+      "args": ["run", "--install=fallback", "build.ts"],
+      "cwd": "${workspaceFolder}/../buntest/single_output",
       "console": "internalConsole",
       "env": {
         "BUN_CONFIG_MINIFY_WHITESPACE": "1"

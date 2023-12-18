@@ -477,6 +477,15 @@ pub fn BSSMap(comptime ValueType: type, comptime count: anytype, comptime store_
             return &instance;
         }
 
+        pub fn clearAndFree(self: *Self) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            self.index.clearAndFree(self.allocator);
+            self.overflow_list = Overflow{};
+            self.backing_buf = undefined;
+            self.backing_buf_used = 0;
+        }
+
         pub fn isOverflowing() bool {
             return instance.backing_buf_used >= @as(u16, count);
         }
