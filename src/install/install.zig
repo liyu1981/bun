@@ -2424,6 +2424,7 @@ pub const PackageManager = struct {
     }
 
     pub var instance: PackageManager = undefined;
+    pub var instance_loaded: bool = false;
 
     pub fn getNetworkTask(this: *PackageManager) *NetworkTask {
         if (this.preallocated_network_tasks.len + 1 < this.preallocated_network_tasks.buffer.len) {
@@ -6121,6 +6122,7 @@ pub const PackageManager = struct {
             .uws_event_loop = uws.Loop.get(),
             .file_poll_store = bun.Async.FilePoll.Store.init(ctx.allocator),
         };
+        instance_loaded = true;
         manager.lockfile = try ctx.allocator.create(Lockfile);
 
         if (!manager.options.enable.cache) {
@@ -6213,6 +6215,7 @@ pub const PackageManager = struct {
             .file_poll_store = bun.Async.FilePoll.Store.init(allocator),
             .workspaces = std.StringArrayHashMap(Semver.Version).init(allocator),
         };
+        instance_loaded = true;
         manager.lockfile = try allocator.create(Lockfile);
         // try Lockfile.initEmpty(manager.lockfile, allocator);
 
