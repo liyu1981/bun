@@ -1620,7 +1620,9 @@ pub const BundleV2 = struct {
         bundler.resolver.env_loader = bundler.env;
         // make resolver to know it is insdie bundler thread (so that it will reuse global package manager)
         bundler.resolver.in_bundler_thread = true;
+        // TODO: this may be safe for single bundler job, but what if concurrent?
         bundler.resolver.dir_cache.clearAndFree();
+        try bundler.resolver.getPackageManager().resetLockfile();
 
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;
