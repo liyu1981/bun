@@ -9,23 +9,9 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "sharp",
-      "program": "bun-debug",
-      "args": ["install", "sharp"],
-      // The cwd here must be the same as in CI. Or you will cause test failures that only happen in CI.
-      "cwd": "/tmp/scratchpad_20230911T213851",
-      "env": {
-        "FORCE_COLOR": "1",
-        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
-      },
-      "console": "internalConsole"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
       "name": "my debug single output",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "build.ts"],
+      "args": ["run", "--bun", "--install=fallback", "build.ts"],
       "cwd": "${workspaceFolder}/../buntest/single_output",
       "console": "internalConsole",
       "env": {
@@ -37,7 +23,7 @@
       "request": "launch",
       "name": "my web compiler debug",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "src/server/index.ts"],
+      "args": ["run", "--bun", "--install=fallback", "src/server/index.ts"],
       "cwd": "${workspaceFolder}/../web-compiler",
       "console": "internalConsole",
       "env": {
@@ -49,7 +35,7 @@
       "request": "launch",
       "name": "my bun build debug autoinstall:test.js",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "test.js"],
+      "args": ["run", "--bun", "--install=fallback", "test.js"],
       "cwd": "${workspaceFolder}/../buntest/auto_install_test",
       "console": "internalConsole",
       "env": {
@@ -61,7 +47,7 @@
       "request": "launch",
       "name": "my bun build debug autoinstall:child.js",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "child.js"],
+      "args": ["run", "--bun", "--install=fallback", "child.js"],
       "cwd": "${workspaceFolder}/../buntest/auto_install_test",
       "console": "internalConsole",
       "env": {
@@ -73,7 +59,7 @@
       "request": "launch",
       "name": "my bun build debug tailwind",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "build.ts"],
+      "args": ["run", "--bun", "--install=fallback", "build.ts"],
       "cwd": "${workspaceFolder}/../buntest/tailwind_test",
       "console": "internalConsole",
       "env": {
@@ -85,12 +71,38 @@
       "request": "launch",
       "name": "my bun build debug vue",
       "program": "${workspaceFolder}/build/bun-debug",
-      "args": ["run", "--install=fallback", "build.ts"],
+      "args": ["run", "--bun", "--install=fallback", "build.ts"],
       "cwd": "${workspaceFolder}/../buntest/vue_test",
       "console": "internalConsole",
       "env": {
         "BUN_CONFIG_MINIFY_WHITESPACE": "1"
       }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "my bun build debug solidjs",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--bun", "--install=fallback", "build.ts"],
+      "cwd": "${workspaceFolder}/../buntest/solidjs_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "sharp",
+      "program": "bun-debug",
+      "args": ["install", "sharp"],
+      // The cwd here must be the same as in CI. Or you will cause test failures that only happen in CI.
+      "cwd": "/tmp/scratchpad_20230911T213851",
+      "env": {
+        "FORCE_COLOR": "1",
+        "BUN_GARBAGE_COLLECTOR_LEVEL": "2"
+      },
+      "console": "internalConsole"
     },
     {
       "type": "lldb",
