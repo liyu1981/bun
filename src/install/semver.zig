@@ -706,14 +706,18 @@ pub const Version = extern struct {
 
             if (self.tag.hasPre()) {
                 const pre = self.tag.pre.slice(formatter.input);
+                // install.zig:cachedNPMPackageFolderPrintBasename is using hash of pre, so be consistent here(otherwise will not found the dir)
+                const pre_hash = bun.Wyhash.hash(0, pre);
                 try writer.writeAll("-");
-                try writer.writeAll(pre);
+                try std.fmt.format(writer, "{any}", .{bun.fmt.hexIntLower(pre_hash)});
             }
 
             if (self.tag.hasBuild()) {
                 const build = self.tag.build.slice(formatter.input);
+                // install.zig:cachedNPMPackageFolderPrintBasename is using hash of build, so be consistent here(otherwise will not found the dir)
+                const build_hash = bun.Wyhash.hash(0, build);
                 try writer.writeAll("+");
-                try writer.writeAll(build);
+                try std.fmt.format(writer, "{any}", .{bun.fmt.hexIntUpper(build_hash)});
             }
         }
     };
