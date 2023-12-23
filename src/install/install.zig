@@ -6374,6 +6374,11 @@ pub const PackageManager = struct {
         return manager;
     }
 
+    pub fn resetLockfile(this: *PackageManager) !void {
+        this.lockfile.deinit();
+        try Lockfile.initEmpty(this.lockfile, this.allocator);
+    }
+
     fn attemptToCreatePackageJSONAndOpen() !std.fs.File {
         const package_json_file = std.fs.cwd().createFileZ("package.json", .{ .read = true }) catch |err| {
             Output.prettyErrorln("<r><red>error:<r> {s} create package.json", .{@errorName(err)});
