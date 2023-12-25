@@ -127,6 +127,7 @@ const JSC = bun.JSC;
 const debugTreeShake = Output.scoped(.TreeShake, true);
 const BitSet = bun.bit_set.DynamicBitSetUnmanaged;
 const Async = bun.Async;
+const DirInfo = @import("../resolver/dir_info.zig");
 
 fn tracer(comptime src: std.builtin.SourceLocation, comptime name: [*:0]const u8) bun.tracy.Ctx {
     return bun.tracy.traceNamed(src, "Bundler." ++ name);
@@ -1620,8 +1621,11 @@ pub const BundleV2 = struct {
         bundler.resolver.env_loader = bundler.env;
         // make resolver to know it is insdie bundler thread (so that it will reuse global package manager)
         bundler.resolver.in_bundler_thread = true;
+
         // TODO: this may be safe for single bundler job, but what if concurrent?
-        bundler.resolver.dir_cache.clearAndFree();
+        // use thread allocated DirInfo.ThreadHashMap
+        bundler.resolver.dir_cache = DirInfo.HashMap.init(allocator, .thread);
+
         try bundler.resolver.getPackageManager().resetLockfile();
 
         bundler.options.jsx = config.jsx;
@@ -1691,6 +1695,9 @@ pub const BundleV2 = struct {
     }
 
     pub fn deinit(this: *BundleV2) void {
+        if (this.bundler.resolver.in_bundler_thread) {
+            defer this.bundler.resolver.dir_cache.deinit();
+        }
         defer this.graph.ast.deinit(bun.default_allocator);
         defer this.graph.input_files.deinit(bun.default_allocator);
         if (this.graph.pool.workers_assignments.count() > 0) {

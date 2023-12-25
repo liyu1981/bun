@@ -5,6 +5,8 @@ const Environment = @import("./env.zig");
 const FixedBufferAllocator = std.heap.FixedBufferAllocator;
 const constStrToU8 = @import("root").bun.constStrToU8;
 const bun = @import("root").bun;
+const DirInfo = @import("./resolver/dir_info.zig");
+
 pub fn isSliceInBuffer(slice: anytype, buffer: anytype) bool {
     return (@intFromPtr(&buffer) <= @intFromPtr(slice.ptr) and (@intFromPtr(slice.ptr) + slice.len) <= (@intFromPtr(buffer) + buffer.len));
 }
@@ -721,6 +723,317 @@ pub fn BSSMap(comptime ValueType: type, comptime count: anytype, comptime store_
         // For now, don't free the keys.
         pub fn remove(self: *Self, key: []const u8) void {
             return self.map.remove(key);
+        }
+    };
+}
+
+pub fn HashMapOnBSS(comptime ValueType: type, comptime count: anytype, comptime remove_trailing_slashes: bool) type {
+    const max_index = count - 1;
+
+    return struct {
+        const Self = @This();
+        const Overflow = OverflowList(ValueType, count / 4);
+
+        index: IndexMap,
+        overflow_list: Overflow = Overflow{},
+        allocator: std.mem.Allocator,
+        mutex: Mutex = Mutex.init(),
+        backing_buf: [count]ValueType = undefined,
+        backing_buf_used: u16 = 0,
+
+        pub var instance: Self = undefined;
+
+        var loaded: bool = false;
+
+        pub fn init(allocator: std.mem.Allocator) *Self {
+            if (!loaded) {
+                instance = Self{
+                    .index = IndexMap{},
+                    .allocator = allocator,
+                };
+                loaded = true;
+            }
+
+            return &instance;
+        }
+
+        pub fn clearAndFree(self: *Self) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            self.index.clearAndFree(self.allocator);
+            self.overflow_list = Overflow{};
+            self.backing_buf = undefined;
+            self.backing_buf_used = 0;
+        }
+
+        pub fn isOverflowing() bool {
+            return instance.backing_buf_used >= @as(u16, count);
+        }
+
+        pub fn getOrPut(self: *Self, denormalized_key: []const u8) !Result {
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+            const _key = bun.hash(key);
+
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            var index = try self.index.getOrPut(self.allocator, _key);
+
+            if (index.found_existing) {
+                return Result{
+                    .hash = _key,
+                    .index = index.value_ptr.*,
+                    .status = switch (index.value_ptr.index) {
+                        NotFound.index => .not_found,
+                        Unassigned.index => .unknown,
+                        else => .exists,
+                    },
+                };
+            }
+            index.value_ptr.* = Unassigned;
+
+            return Result{
+                .hash = _key,
+                .index = Unassigned,
+                .status = .unknown,
+            };
+        }
+
+        pub fn get(self: *Self, denormalized_key: []const u8) ?*ValueType {
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+            const _key = bun.hash(key);
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            const index = self.index.get(_key) orelse return null;
+            return self.atIndex(index);
+        }
+
+        pub fn markNotFound(self: *Self, result: Result) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            self.index.put(self.allocator, result.hash, NotFound) catch unreachable;
+        }
+
+        pub fn atIndex(self: *Self, index: IndexType) ?*ValueType {
+            if (index.index == NotFound.index or index.index == Unassigned.index) return null;
+
+            if (index.is_overflow) {
+                return self.overflow_list.atIndexMut(index);
+            } else {
+                return &instance.backing_buf[index.index];
+            }
+        }
+
+        pub fn put(self: *Self, result: *Result, value: ValueType) !*ValueType {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            if (result.index.index == NotFound.index or result.index.index == Unassigned.index) {
+                result.index.is_overflow = instance.backing_buf_used > max_index;
+                if (result.index.is_overflow) {
+                    result.index.index = self.overflow_list.len();
+                } else {
+                    result.index.index = instance.backing_buf_used;
+                    instance.backing_buf_used += 1;
+                }
+            }
+
+            try self.index.put(self.allocator, result.hash, result.index);
+
+            if (result.index.is_overflow) {
+                if (self.overflow_list.len() == result.index.index) {
+                    return self.overflow_list.append(value);
+                } else {
+                    var ptr = self.overflow_list.atIndexMut(result.index);
+                    ptr.* = value;
+                    return ptr;
+                }
+            } else {
+                instance.backing_buf[result.index.index] = value;
+
+                return &instance.backing_buf[result.index.index];
+            }
+        }
+
+        pub fn remove(self: *Self, denormalized_key: []const u8) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+
+            const _key = bun.hash(key);
+            _ = self.index.remove(_key);
+            // const index = self.index.get(_key) orelse return;
+            // switch (index) {
+            //     Unassigned.index, NotFound.index => {
+            //         self.index.remove(_key);
+            //     },
+            //     0...max_index => {
+            //         if (comptime hasDeinit(ValueType)) {
+            //             instance.backing_buf[index].deinit();
+            //         }
+
+            //         instance.backing_buf[index] = undefined;
+            //     },
+            //     else => {
+            //         const i = index - count;
+            //         if (hasDeinit(ValueType)) {
+            //             self.overflow_list.items[i].deinit();
+            //         }
+            //         self.overflow_list.items[index - count] = undefined;
+            //     },
+            // }
+        }
+    };
+}
+
+pub fn HashMap4Thread(comptime ValueType: type, comptime count: anytype, comptime remove_trailing_slashes: bool) type {
+    const max_index = count - 1;
+
+    return struct {
+        const Self = @This();
+        const Overflow = OverflowList(ValueType, count / 4);
+
+        index: IndexMap,
+        overflow_list: Overflow = Overflow{},
+        allocator: std.mem.Allocator,
+        mutex: Mutex = Mutex.init(),
+        backing_buf: [count]ValueType = undefined,
+        backing_buf_used: u16 = 0,
+
+        pub fn init(this: *Self, allocator: std.mem.Allocator) *Self {
+            this.* = Self{
+                .index = IndexMap{},
+                .allocator = allocator,
+            };
+            return this;
+        }
+
+        pub fn clearAndFree(self: *Self) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            self.index.clearAndFree(self.allocator);
+            self.overflow_list = Overflow{};
+            self.backing_buf = undefined;
+            self.backing_buf_used = 0;
+        }
+
+        pub fn isOverflowing(this: *Self) bool {
+            return this.backing_buf_used >= @as(u16, count);
+        }
+
+        pub fn getOrPut(self: *Self, denormalized_key: []const u8) !Result {
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+            const _key = bun.hash(key);
+
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            var index = try self.index.getOrPut(self.allocator, _key);
+
+            if (index.found_existing) {
+                return Result{
+                    .hash = _key,
+                    .index = index.value_ptr.*,
+                    .status = switch (index.value_ptr.index) {
+                        NotFound.index => .not_found,
+                        Unassigned.index => .unknown,
+                        else => .exists,
+                    },
+                };
+            }
+            index.value_ptr.* = Unassigned;
+
+            return Result{
+                .hash = _key,
+                .index = Unassigned,
+                .status = .unknown,
+            };
+        }
+
+        pub fn get(self: *Self, denormalized_key: []const u8) ?*ValueType {
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+            const _key = bun.hash(key);
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            const index = self.index.get(_key) orelse return null;
+            return self.atIndex(index);
+        }
+
+        pub fn markNotFound(self: *Self, result: Result) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            self.index.put(self.allocator, result.hash, NotFound) catch unreachable;
+        }
+
+        pub fn atIndex(self: *Self, index: IndexType) ?*ValueType {
+            if (index.index == NotFound.index or index.index == Unassigned.index) return null;
+
+            if (index.is_overflow) {
+                return self.overflow_list.atIndexMut(index);
+            } else {
+                return &self.backing_buf[index.index];
+            }
+        }
+
+        pub fn put(self: *Self, result: *Result, value: ValueType) !*ValueType {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            if (result.index.index == NotFound.index or result.index.index == Unassigned.index) {
+                result.index.is_overflow = self.backing_buf_used > max_index;
+                if (result.index.is_overflow) {
+                    result.index.index = self.overflow_list.len();
+                } else {
+                    result.index.index = self.backing_buf_used;
+                    self.backing_buf_used += 1;
+                }
+            }
+
+            try self.index.put(self.allocator, result.hash, result.index);
+
+            if (result.index.is_overflow) {
+                if (self.overflow_list.len() == result.index.index) {
+                    return self.overflow_list.append(value);
+                } else {
+                    var ptr = self.overflow_list.atIndexMut(result.index);
+                    ptr.* = value;
+                    return ptr;
+                }
+            } else {
+                self.backing_buf[result.index.index] = value;
+                return &self.backing_buf[result.index.index];
+            }
+        }
+
+        pub fn remove(self: *Self, denormalized_key: []const u8) void {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            const key = if (comptime remove_trailing_slashes) std.mem.trimRight(u8, denormalized_key, "/") else denormalized_key;
+
+            const _key = bun.hash(key);
+            _ = self.index.remove(_key);
+            // const index = self.index.get(_key) orelse return;
+            // switch (index) {
+            //     Unassigned.index, NotFound.index => {
+            //         self.index.remove(_key);
+            //     },
+            //     0...max_index => {
+            //         if (comptime hasDeinit(ValueType)) {
+            //             instance.backing_buf[index].deinit();
+            //         }
+
+            //         instance.backing_buf[index] = undefined;
+            //     },
+            //     else => {
+            //         const i = index - count;
+            //         if (hasDeinit(ValueType)) {
+            //             self.overflow_list.items[i].deinit();
+            //         }
+            //         self.overflow_list.items[index - count] = undefined;
+            //     },
+            // }
         }
     };
 }
