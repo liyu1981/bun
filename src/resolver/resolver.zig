@@ -555,7 +555,7 @@ pub const Resolver = struct {
 
     // This cache maps a directory path to information about that directory and
     // all parent directories
-    dir_cache: *DirInfo.HashMap,
+    dir_cache: DirInfo.HashMap,
 
     /// This is set to false for the runtime. The runtime should choose "main"
     /// over "module" in package.json
@@ -651,7 +651,7 @@ pub const Resolver = struct {
 
         return ThisResolver{
             .allocator = allocator,
-            .dir_cache = DirInfo.HashMap.init(bun.default_allocator),
+            .dir_cache = DirInfo.HashMap.init(bun.default_allocator, .bss),
             .mutex = &resolver_Mutex,
             .caches = CacheSet.init(allocator),
             .opts = opts,
@@ -1251,7 +1251,7 @@ pub const Resolver = struct {
             // Check the "browser" map
             if (r.care_about_browser_field) {
                 if (r.dirInfoCached(std.fs.path.dirname(abs_path) orelse unreachable) catch null) |_import_dir_info| {
-                    if (_import_dir_info.getEnclosingBrowserScope()) |import_dir_info| {
+                    if (_import_dir_info.getEnclosingBrowserScope(r.dir_cache)) |import_dir_info| {
                         const pkg = import_dir_info.package_json.?;
                         if (r.checkBrowserMap(
                             import_dir_info,
@@ -1388,7 +1388,7 @@ pub const Resolver = struct {
 
             if (r.care_about_browser_field) {
                 // Support remapping one package path to another via the "browser" field
-                if (source_dir_info.getEnclosingBrowserScope()) |browser_scope| {
+                if (source_dir_info.getEnclosingBrowserScope(r.dir_cache)) |browser_scope| {
                     if (browser_scope.package_json) |package_json| {
                         if (r.checkBrowserMap(
                             browser_scope,
@@ -1460,7 +1460,7 @@ pub const Resolver = struct {
 
                     if (res.package_json != null and r.care_about_browser_field) {
                         var base_dir_info = res.dir_info orelse (r.readDirInfo(res.path_pair.primary.name.dir) catch null) orelse return .{ .success = result };
-                        if (base_dir_info.getEnclosingBrowserScope()) |browser_scope| {
+                        if (base_dir_info.getEnclosingBrowserScope(r.dir_cache)) |browser_scope| {
                             if (r.checkBrowserMap(
                                 browser_scope,
                                 res.path_pair.primary.text,
@@ -1533,7 +1533,7 @@ pub const Resolver = struct {
                 }
             }
 
-            dir_info = dir_info.getParent() orelse return null;
+            dir_info = dir_info.getParent(r.dir_cache) orelse return null;
         }
 
         unreachable;
@@ -1649,7 +1649,7 @@ pub const Resolver = struct {
         // Find the parent directory with the "package.json" file
         var dir_info_package_json: ?*DirInfo = dir_info;
         while (dir_info_package_json != null and dir_info_package_json.?.package_json == null)
-            dir_info_package_json = dir_info_package_json.?.getParent();
+            dir_info_package_json = dir_info_package_json.?.getParent(r.dir_cache);
 
         // Check for subpath imports: https://nodejs.org/api/packages.html#subpath-imports
         if (dir_info_package_json != null and
@@ -1776,7 +1776,7 @@ pub const Resolver = struct {
                 }
             }
 
-            dir_info = dir_info.getParent() orelse break;
+            dir_info = dir_info.getParent(r.dir_cache) orelse break;
         }
 
         dir_info = source_dir_info;
@@ -3168,7 +3168,7 @@ pub const Resolver = struct {
                     // is disallowed if there is a "node_modules" folder in between the child
                     // package and the parent package.
                     const isInSamePackage = brk: {
-                        const parent = dir_info.getParent() orelse break :brk true;
+                        const parent = dir_info.getParent(r.dir_cache) orelse break :brk true;
                         break :brk !parent.isNodeModules();
                     };
 
@@ -3203,7 +3203,7 @@ pub const Resolver = struct {
 
         if (r.care_about_browser_field) {
             // Potentially remap using the "browser" field
-            if (dir_info.getEnclosingBrowserScope()) |browser_scope| {
+            if (dir_info.getEnclosingBrowserScope(r.dir_cache)) |browser_scope| {
                 if (browser_scope.package_json) |browser_json| {
                     if (r.checkBrowserMap(
                         browser_scope,
@@ -3412,7 +3412,7 @@ pub const Resolver = struct {
         }
 
         if (r.care_about_browser_field) {
-            if (dir_info.getEnclosingBrowserScope()) |browser_scope| {
+            if (dir_info.getEnclosingBrowserScope(r.dir_cache)) |browser_scope| {
                 const field_rel_path = comptime "index";
 
                 if (browser_scope.package_json) |browser_json| {

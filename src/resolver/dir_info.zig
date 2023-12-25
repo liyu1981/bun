@@ -112,11 +112,18 @@ pub fn getEntriesConst(dirinfo: *const DirInfo) ?*const Fs.FileSystem.DirEntry {
     }
 }
 
-pub fn getParent(i: *const DirInfo) ?*DirInfo {
-    return HashMap.instance.atIndex(i.parent);
+pub fn getParent(i: *const DirInfo, map: HashMap) ?*DirInfo {
+    switch (map.map_type) {
+        .bss => return map.map.bss.atIndex(i.parent),
+        .thread => return map.map.thread.atIndex(i.parent),
+    }
 }
-pub fn getEnclosingBrowserScope(i: *const DirInfo) ?*DirInfo {
-    return HashMap.instance.atIndex(i.enclosing_browser_scope);
+
+pub fn getEnclosingBrowserScope(i: *const DirInfo, map: HashMap) ?*DirInfo {
+    switch (map.map_type) {
+        .bss => return map.map.bss.atIndex(i.enclosing_browser_scope),
+        .thread => return map.map.thread.atIndex(i.enclosing_browser_scope),
+    }
 }
 
 // Goal: Really fast, low allocation directory map exploiting cache locality where we don't worry about lifetimes much.
@@ -124,4 +131,102 @@ pub fn getEnclosingBrowserScope(i: *const DirInfo) ?*DirInfo {
 // 2. Don't expect a provided key to exist after it's queried
 // 3. Store whether a directory has been queried and whether that query was successful.
 // 4. Allocate onto the https://en.wikipedia.org/wiki/.bss#BSS_in_C instead of the heap, so we can avoid memory leaks
-pub const HashMap = allocators.BSSMap(DirInfo, Fs.Preallocate.Counts.dir_entry, false, 128, true);
+pub const BSSHashMap = allocators.HashMapOnBSS(DirInfo, Fs.Preallocate.Counts.dir_entry, true);
+pub const ThreadHashMap = allocators.HashMap4Thread(DirInfo, Fs.Preallocate.Counts.dir_entry, true);
+
+pub const HashMap = struct {
+    const Self = @This();
+    const HashMapType = enum {
+        bss,
+        thread,
+    };
+    const InnerMap = union {
+        bss: *BSSHashMap,
+        thread: *ThreadHashMap,
+    };
+    const Result = allocators.Result;
+    const IndexType = allocators.IndexType;
+
+    allocator: std.mem.Allocator,
+    map_type: HashMapType,
+    map: InnerMap,
+
+    pub fn init(allocator: std.mem.Allocator, mapType: HashMapType) Self {
+        const inner_map = switch (mapType) {
+            .bss => InnerMap{ .bss = BSSHashMap.init(allocator) },
+            .thread => threadblk: {
+                var thm_ = allocator.create(ThreadHashMap) catch unreachable;
+                thm_ = thm_.init(allocator);
+                break :threadblk InnerMap{ .thread = thm_ };
+            },
+        };
+        return HashMap{
+            .allocator = allocator,
+            .map_type = mapType,
+            .map = inner_map,
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        self.clearAndFree();
+        if (self.map_type == .thread) {
+            self.allocator.destroy(self.map.thread);
+        }
+    }
+
+    pub fn clearAndFree(self: Self) void {
+        switch (self.map_type) {
+            .bss => return self.map.bss.clearAndFree(),
+            .thread => return self.map.thread.clearAndFree(),
+        }
+    }
+
+    pub fn isOverflowing(self: Self) bool {
+        switch (self.map_type) {
+            .bss => return BSSHashMap.isOverflowing(),
+            .thread => return self.map.thread.clearAndFree(),
+        }
+    }
+
+    pub fn getOrPut(self: Self, denormalized_key: []const u8) !Result {
+        switch (self.map_type) {
+            .bss => return self.map.bss.getOrPut(denormalized_key),
+            .thread => return self.map.thread.getOrPut(denormalized_key),
+        }
+    }
+
+    pub fn get(self: Self, denormalized_key: []const u8) ?*DirInfo {
+        switch (self.map_type) {
+            .bss => return self.map.bss.get(denormalized_key),
+            .thread => return self.map.thread.get(denormalized_key),
+        }
+    }
+
+    pub fn markNotFound(self: Self, result: Result) void {
+        switch (self.map_type) {
+            .bss => return self.map.bss.markNotFound(result),
+            .thread => return self.map.thread.markNotFound(result),
+        }
+    }
+
+    pub fn atIndex(self: Self, index: IndexType) ?*DirInfo {
+        switch (self.map_type) {
+            .bss => return self.map.bss.atIndex(index),
+            .thread => return self.map.thread.atIndex(index),
+        }
+    }
+
+    pub fn put(self: Self, result: *Result, value: DirInfo) !*DirInfo {
+        switch (self.map_type) {
+            .bss => return self.map.bss.put(result, value),
+            .thread => return self.map.thread.put(result, value),
+        }
+    }
+
+    pub fn remove(self: Self, denormalized_key: []const u8) void {
+        switch (self.map_type) {
+            .bss => return self.map.bss.remove(denormalized_key),
+            .thread => return self.map.thread.remove(denormalized_key),
+        }
+    }
+};
