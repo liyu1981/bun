@@ -20,6 +20,18 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "my bun build debug fallback_test",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--bun", "--install=fallback", "index.ts"],
+      "cwd": "${workspaceFolder}/../buntest/fallback_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "my web compiler debug",
       "program": "${workspaceFolder}/build/bun-debug",
       "args": ["run", "--bun", "--install=fallback", "src/server/index.ts"],

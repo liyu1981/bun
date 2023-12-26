@@ -6289,7 +6289,7 @@ pub const PackageManager = struct {
         instance_loaded = true;
         // manager.lockfile = try ctx.allocator.create(Lockfile);
         const default_lockfile_ = try ctx.allocator.create(Lockfile);
-        try manager.lockfile_map.put(std.Thread.getCurrentId(), default_lockfile_);
+        manager.updateLockfile(std.Thread.getCurrentId(), default_lockfile_);
 
         if (!manager.options.enable.cache) {
             manager.options.enable.manifest_cache = false;
@@ -6384,7 +6384,7 @@ pub const PackageManager = struct {
         instance_loaded = true;
         // manager.lockfile = try allocator.create(Lockfile);
         const default_lockfile_ = try allocator.create(Lockfile);
-        try manager.lockfile_map.put(std.Thread.getCurrentId(), default_lockfile_);
+        manager.updateLockfile(std.Thread.getCurrentId(), default_lockfile_);
 
         if (Output.enable_ansi_colors_stderr) {
             manager.progress = Progress{};
@@ -6463,9 +6463,44 @@ pub const PackageManager = struct {
         return manager;
     }
 
-    pub fn resetLockfile(this: *PackageManager) !void {
-        this.getLockfile().deinit();
-        try Lockfile.initEmpty(this.getLockfile(), this.allocator);
+    pub fn initLockfile4Thread(
+        this: *PackageManager,
+        allocator: std.mem.Allocator,
+        cwd: string,
+        log: *logger.Log,
+    ) !void {
+        var root_dir = try Fs.FileSystem.instance.fs.readDirectory(
+            cwd,
+            null,
+            0,
+            true,
+        );
+        const default_lockfile_ = try allocator.create(Lockfile);
+        this.updateLockfile(std.Thread.getCurrentId(), default_lockfile_);
+
+        if (root_dir.entries.hasComptimeQuery("bun.lockb")) {
+            var buf: [bun.MAX_PATH_BYTES]u8 = undefined;
+            var parts = [_]string{ "./bun.lockb", };
+            const lockfile_path = Path.joinAbsStringBuf(
+                cwd,
+                &buf,
+                &parts,
+                .auto,
+            );
+            buf[lockfile_path.len] = 0;
+            const lockfile_path_z = buf[0..lockfile_path.len :0];
+
+            switch (this.getLockfile().loadFromDisk(
+                allocator,
+                log,
+                lockfile_path_z,
+            )) {
+                .ok => |load| this.updateLockfile(std.Thread.getCurrentId(), load.lockfile),
+                else => try this.getLockfile().initEmpty(allocator),
+            }
+        } else {
+            try this.getLockfile().initEmpty(allocator);
+        }
     }
 
     fn attemptToCreatePackageJSONAndOpen() !std.fs.File {
