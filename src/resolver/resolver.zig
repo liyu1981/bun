@@ -40,7 +40,7 @@ const Path = Fs.Path;
 const PackageManager = @import("../install/install.zig").PackageManager;
 const Dependency = @import("../install/dependency.zig");
 const Install = @import("../install/install.zig");
-const Lockfile = @import("../install/lockfile.zig").Lockfile;
+pub const Lockfile = @import("../install/lockfile.zig").Lockfile;
 const Package = @import("../install/lockfile.zig").Package;
 const Resolution = @import("../install/resolution.zig").Resolution;
 const Semver = @import("../install/semver.zig");
@@ -547,53 +547,40 @@ pub const Resolver = struct {
     in_bundler_thread: bool = false,
 
     pub fn getPackageManager(this: *Resolver) *PackageManager {
+        // in case the singlton pm is not loaded
+        if (!PackageManager.instance_loaded) {
+            bun.HTTPThread.init() catch unreachable;
+            const the_pm = PackageManager.initWithRuntime(
+                this.log,
+                this.opts.install,
+                // liyu: Do not use this.allocator but bun.default_allocator here because
+                // 1. if this is not in the thread, resolver should have already in using
+                //    bun.default_allocator
+                // 2. if this is in build thread, resolver is using Threadlocal allocator,
+                //    but for our package manager (as it is shared service) should use
+                //    bun.default_allocator
+                // TODO: valgrind this change, is it right? no leaks?
+                // this.allocator,
+                bun.default_allocator,
+                .{},
+                this.env_loader.?,
+            ) catch @panic("Failed to initialize package manager");
+            the_pm.onWake = this.onWakePackageManager;
+        }
+        const pm_ = &PackageManager.instance;
+
         if (this.in_bundler_thread) {
             // when in thread we reuse the global package manager
             return this.package_manager orelse brk: {
-                if (!PackageManager.instance_loaded) {
-                    bun.HTTPThread.init() catch unreachable;
-                    const pm = PackageManager.initWithRuntime(
-                        this.log,
-                        this.opts.install,
-                        // liyu: Do not use this.allocator but bun.default_allocator here because
-                        // 1. if this is not in the thread, resolver should have already in using
-                        //    bun.default_allocator
-                        // 2. if this is in build thread, resolver is using Threadlocal allocator,
-                        //    but for our package manager (as it is shared service) should use
-                        //    bun.default_allocator
-                        // TODO: valgrind this change, is it right? no leaks?
-                        // this.allocator,
-                        bun.default_allocator,
-                        .{},
-                        this.env_loader.?,
-                    ) catch @panic("Failed to initialize package manager");
-                    pm.onWake = this.onWakePackageManager;
-                }
-                const pm = &PackageManager.instance;
-                this.package_manager = pm;
-                break :brk pm;
+                // in thread let us use our own lockfile
+                pm_.initLockfile4Thread(this.allocator, this.opts.root_dir, this.log) catch unreachable;
+                this.package_manager = pm_;
+                break :brk pm_;
             };
         } else {
             return this.package_manager orelse brk: {
-                bun.HTTPThread.init() catch unreachable;
-                const pm = PackageManager.initWithRuntime(
-                    this.log,
-                    this.opts.install,
-                    // liyu: Do not use this.allocator but bun.default_allocator here because
-                    // 1. if this is not in the thread, resolver should have already in using
-                    //    bun.default_allocator
-                    // 2. if this is in build thread, resolver is using Threadlocal allocator,
-                    //    but for our package manager (as it is shared service) should use
-                    //    bun.default_allocator
-                    // TODO: valgrind this change, is it right? no leaks?
-                    // this.allocator,
-                    bun.default_allocator,
-                    .{},
-                    this.env_loader.?,
-                ) catch @panic("Failed to initialize package manager");
-                pm.onWake = this.onWakePackageManager;
-                this.package_manager = pm;
-                break :brk pm;
+                this.package_manager = pm_;
+                break :brk pm_;
             };
         }
     }
