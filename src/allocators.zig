@@ -773,7 +773,7 @@ pub fn HashMapOnBSS(comptime ValueType: type, comptime count: anytype, comptime 
 
             self.mutex.lock();
             defer self.mutex.unlock();
-            var index = try self.index.getOrPut(self.allocator, _key);
+            const index = try self.index.getOrPut(self.allocator, _key);
 
             if (index.found_existing) {
                 return Result{
@@ -841,7 +841,7 @@ pub fn HashMapOnBSS(comptime ValueType: type, comptime count: anytype, comptime 
                 if (self.overflow_list.len() == result.index.index) {
                     return self.overflow_list.append(value);
                 } else {
-                    var ptr = self.overflow_list.atIndexMut(result.index);
+                    const ptr = self.overflow_list.atIndexMut(result.index);
                     ptr.* = value;
                     return ptr;
                 }
@@ -925,7 +925,7 @@ pub fn HashMap4Thread(comptime ValueType: type, comptime count: anytype, comptim
 
             self.mutex.lock();
             defer self.mutex.unlock();
-            var index = try self.index.getOrPut(self.allocator, _key);
+            const index = try self.index.getOrPut(self.allocator, _key);
 
             if (index.found_existing) {
                 return Result{
@@ -993,7 +993,7 @@ pub fn HashMap4Thread(comptime ValueType: type, comptime count: anytype, comptim
                 if (self.overflow_list.len() == result.index.index) {
                     return self.overflow_list.append(value);
                 } else {
-                    var ptr = self.overflow_list.atIndexMut(result.index);
+                    const ptr = self.overflow_list.atIndexMut(result.index);
                     ptr.* = value;
                     return ptr;
                 }

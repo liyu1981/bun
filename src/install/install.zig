@@ -8561,12 +8561,13 @@ pub const PackageManager = struct {
         comptime log_level: PackageManager.Options.LogLevel,
     ) !PackageInstall.Summary {
         const original_lockfile = this.getLockfile();
-        defer this.lockfile = original_lockfile;
+        defer this.updateLockfile(std.Thread.getCurrentId(), original_lockfile);
         if (!this.options.local_package_features.dev_dependencies) {
-            this.lockfile = try this.lockfile.maybeCloneFilteringRootPackages(
+            const maybe_cloned_lockfile_ = try this.getLockfile().maybeCloneFilteringRootPackages(
                 this.options.local_package_features,
                 this.options.enable.exact_versions,
             );
+            this.updateLockfile(std.Thread.getCurrentId(), maybe_cloned_lockfile_);
         }
 
         const root_lifecycle_scripts_count = brk: {
@@ -8598,7 +8599,7 @@ pub const PackageManager = struct {
             progress.supports_ansi_escape_codes = Output.enable_ansi_colors_stderr;
             download_node = root_node.start(ProgressStrings.download(), 0);
 
-            install_node = root_node.start(ProgressStrings.install(), this.lockfile.packages.len);
+            install_node = root_node.start(ProgressStrings.install(), this.getLockfile().packages.len);
             scripts_node = root_node.start(ProgressStrings.script(), root_lifecycle_scripts_count);
             this.downloads_node = &download_node;
             this.scripts_node = &scripts_node;
@@ -8652,7 +8653,7 @@ pub const PackageManager = struct {
         var summary = PackageInstall.Summary{};
 
         {
-            var iterator = Lockfile.Tree.Iterator.init(this.lockfile);
+            var iterator = Lockfile.Tree.Iterator.init(this.getLockfile());
             if (comptime Environment.isPosix) {
                 Bin.Linker.ensureUmask();
             }
@@ -8660,10 +8661,10 @@ pub const PackageManager = struct {
                 // These slices potentially get resized during iteration
                 // so we want to make sure they're not accessible to the rest of this function
                 // to make mistakes harder
-                var parts = this.lockfile.packages.slice();
+                var parts = this.getLockfile().packages.slice();
 
                 const completed_trees, const tree_ids_to_trees_the_id_depends_on, const tree_install_counts = trees: {
-                    const trees = this.lockfile.buffers.trees.items;
+                    const trees = this.getLockfile().buffers.trees.items;
                     const completed_trees = try Bitset.initEmpty(this.allocator, trees.len);
                     var tree_ids_to_trees_the_id_depends_on = try Bitset.List.initEmpty(this.allocator, trees.len, trees.len);
 
@@ -8718,7 +8719,7 @@ pub const PackageManager = struct {
                     .root_node_modules_folder = node_modules_folder,
                     .names = parts.items(.name),
                     .resolutions = parts.items(.resolution),
-                    .lockfile = this.lockfile,
+                    .lockfile = this.getLockfile(),
                     .node = &install_node,
                     .node_modules_folder = node_modules_folder,
                     .progress = progress,
@@ -8729,7 +8730,7 @@ pub const PackageManager = struct {
                     .force_install = options.enable.force_install,
                     .successfully_installed = try Bitset.initEmpty(
                         this.allocator,
-                        this.lockfile.packages.len,
+                        this.getLockfile().packages.len,
                     ),
                     .tree_iterator = &iterator,
                     .command_ctx = ctx,
@@ -8850,7 +8851,7 @@ pub const PackageManager = struct {
             }
 
             if (comptime Environment.allow_assert) {
-                for (this.lockfile.buffers.trees.items) |tree| {
+                for (this.getLockfile().buffers.trees.items) |tree| {
                     std.debug.assert(installer.tree_install_counts[tree.id] == tree.dependencies.len);
                 }
             }
@@ -9429,7 +9430,7 @@ pub const PackageManager = struct {
                     },
                 }
 
-                manager.lifecycle_script_time_log.printAndDeinit(manager.lockfile.allocator);
+                manager.lifecycle_script_time_log.printAndDeinit(manager.getLockfile().allocator);
 
                 if (!did_meta_hash_change) {
                     manager.summary.remove = 0;

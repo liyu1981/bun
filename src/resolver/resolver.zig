@@ -2129,7 +2129,7 @@ pub const Resolver = struct {
 
         // We must initialize it as empty so that the result index is correct.
         // This is important so that browser_scope has a valid index.
-        var dir_info_ptr = try r.dir_cache.put(&dir_cache_info_result, .{});
+        const dir_info_ptr = try r.dir_cache.put(&dir_cache_info_result, .{});
 
         try r.dirInfoUncached(
             dir_info_ptr,
@@ -2680,7 +2680,7 @@ pub const Resolver = struct {
                     => return null,
 
                     else => {
-                        var cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
+                        const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
                         r.dir_cache.markNotFound(queue_top.result);
                         rfs.entries.markNotFound(cached_dir_entry_result);
                         if (comptime enable_logging) {
@@ -2780,7 +2780,7 @@ pub const Resolver = struct {
 
             // We must initialize it as empty so that the result index is correct.
             // This is important so that browser_scope has a valid index.
-            var dir_info_ptr = try r.dir_cache.put(&queue_top.result, DirInfo{});
+            const dir_info_ptr = try r.dir_cache.put(&queue_top.result, DirInfo{});
             const parent_ptr = r.dir_cache.atIndex(top_parent.index);
 
             try r.dirInfoUncached(
@@ -3805,7 +3805,7 @@ pub const Resolver = struct {
         const rfs: *Fs.FileSystem.RealFS = &r.fs.fs;
         var entries = _entries.entries;
 
-        var ourcache = bufs(.path_in_global_disk_cache);
+        const ourcache = bufs(.path_in_global_disk_cache);
         _ = ourcache;
 
         info.* = DirInfo{

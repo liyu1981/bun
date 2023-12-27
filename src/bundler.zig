@@ -357,10 +357,10 @@ pub const Bundler = struct {
     }
 
     pub inline fn resolveEntryPoint(bundler: *Bundler, entry_point: string) anyerror!_resolver.Result {
-        var abs_entry_point = brk: {
+        const abs_entry_point = brk: {
             if (!strings.hasPrefix(entry_point, "/")) {
                 // if not abs path, convert to abs path here
-                var abs_path = try std.fs.path.resolve(bundler.allocator, &.{ bundler.options.root_dir, entry_point });
+                const abs_path = try std.fs.path.resolve(bundler.allocator, &.{ bundler.options.root_dir, entry_point });
                 break :brk abs_path;
             } else {
                 break :brk try bundler.allocator.dupe(u8, entry_point);
