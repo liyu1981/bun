@@ -127,7 +127,7 @@ const JSC = bun.JSC;
 const debugTreeShake = Output.scoped(.TreeShake, true);
 const BitSet = bun.bit_set.DynamicBitSetUnmanaged;
 const Async = bun.Async;
-const DirInfo = @import("../resolver/dir_info.zig");
+const ThreadHashMap = @import("../resolver/dir_info.zig").ThreadHashMap;
 
 fn tracer(comptime src: std.builtin.SourceLocation, comptime name: [*:0]const u8) bun.tracy.Ctx {
     return bun.tracy.traceNamed(src, "Bundler." ++ name);
@@ -1622,7 +1622,8 @@ pub const BundleV2 = struct {
         // in thread we use a seperate dirinfo cache inited on thread arena
         // allocator as resolver.zig:597 always use bun.default_allocator,
         // which will cause when bundle in thread & auto_install crash
-        bundler.resolver.dir_cache = DirInfo.HashMap.init_force(allocator);
+        bundler.resolver.in_thread = true;
+        bundler.resolver.dir_cache_thread = ThreadHashMap.init(allocator);
 
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;

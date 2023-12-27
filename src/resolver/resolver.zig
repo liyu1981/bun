@@ -45,6 +45,7 @@ const Package = @import("../install/lockfile.zig").Package;
 const Resolution = @import("../install/resolution.zig").Resolution;
 const Semver = @import("../install/semver.zig");
 const DotEnv = @import("../env_loader.zig");
+const ThreadHashMap = @import("./dir_info.zig").ThreadHashMap;
 
 pub fn isPackagePath(path: string) bool {
     // Always check for posix absolute paths (starts with "/")
@@ -560,6 +561,12 @@ pub const Resolver = struct {
     /// over "module" in package.json
     prefer_module_field: bool = true,
 
+    // indicator for whether this resolver is used in a thread (like from build.ts)
+    in_thread: bool = false,
+
+    // For in thread usage of dir_cache as DirInfo.HashMap is global and in BSS
+    dir_cache_thread: *ThreadHashMap = undefined,
+
     pub fn getPackageManager(this: *Resolver) *PackageManager {
         return this.package_manager orelse brk: {
             bun.HTTPThread.init() catch unreachable;
@@ -573,8 +580,8 @@ pub const Resolver = struct {
                 //    but for our package manager (as it is shared service) should use
                 //    bun.default_allocator
                 // TODO: valgrind this change, is it right? no leaks?
-                // this.allocator,
-                bun.default_allocator,
+                this.allocator,
+                // bun.default_allocator,
                 .{},
                 this.env_loader.?,
             ) catch @panic("Failed to initialize package manager");
@@ -616,6 +623,9 @@ pub const Resolver = struct {
             resolver_Mutex = Mutex.init();
             resolver_Mutex_loaded = true;
         }
+
+        const same_allocator = &bun.default_allocator == &allocator;
+        dev("init1 resolver with same allocator? {any}", .{same_allocator});
 
         return ThisResolver{
             .allocator = allocator,
@@ -1568,7 +1578,11 @@ pub const Resolver = struct {
     pub fn bustDirCache(r: *ThisResolver, path: string) void {
         dev("Bust {s}", .{path});
         r.fs.fs.bustEntriesCache(path);
-        r.dir_cache.remove(path);
+        if (r.in_thread) {
+            r.dir_cache_thread.remove(path);
+        } else {
+            r.dir_cache.remove(path);
+        }
     }
 
     pub fn loadNodeModules(
@@ -2035,10 +2049,15 @@ pub const Resolver = struct {
     ) !?*DirInfo {
         std.debug.assert(r.package_manager != null);
 
-        var dir_cache_info_result = r.dir_cache.getOrPut(dir_path) catch unreachable;
+        var dir_cache_info_result = try if (r.in_thread) r.dir_cache_thread.getOrPut(dir_path) else r.dir_cache.getOrPut(dir_path);
+
         if (dir_cache_info_result.status == .exists) {
             // we've already looked up this package before
-            return r.dir_cache.atIndex(dir_cache_info_result.index).?;
+            if (r.in_thread) {
+                return r.dir_cache_thread.atIndex(dir_cache_info_result.index).?;
+            } else {
+                return r.dir_cache.atIndex(dir_cache_info_result.index).?;
+            }
         }
         var rfs = &r.fs.fs;
         var cached_dir_entry_result = rfs.entries.getOrPut(dir_path) catch unreachable;
@@ -2107,7 +2126,7 @@ pub const Resolver = struct {
 
         // We must initialize it as empty so that the result index is correct.
         // This is important so that browser_scope has a valid index.
-        const dir_info_ptr = r.dir_cache.put(&dir_cache_info_result, .{}) catch unreachable;
+        var dir_info_ptr = try if (r.in_thread) r.dir_cache_thread.put(&dir_cache_info_result, .{}) else r.dir_cache.put(&dir_cache_info_result, .{});
 
         try r.dirInfoUncached(
             dir_info_ptr,
@@ -2494,7 +2513,11 @@ pub const Resolver = struct {
         r: *ThisResolver,
         path: string,
     ) ?*DirInfo {
-        return r.dir_cache.get(path);
+        if (r.in_thread) {
+            return r.dir_cache_thread.get(path);
+        } else {
+            return r.dir_cache.get(path);
+        }
     }
 
     inline fn isDotSlash(path: string) bool {
@@ -2511,9 +2534,13 @@ pub const Resolver = struct {
         if (isDotSlash(_path) or strings.eqlComptime(_path, "."))
             _path = r.fs.top_level_dir;
 
-        const top_result = try r.dir_cache.getOrPut(_path);
+        const top_result = try if (r.in_thread) r.dir_cache_thread.getOrPut(_path) else r.dir_cache.getOrPut(_path);
         if (top_result.status != .unknown) {
-            return r.dir_cache.atIndex(top_result.index);
+            if (r.in_thread) {
+                return r.dir_cache_thread.atIndex(top_result.index);
+            } else {
+                return r.dir_cache.atIndex(top_result.index);
+            }
         }
 
         var dir_info_uncached_path_buf = bufs(.dir_info_uncached_path);
