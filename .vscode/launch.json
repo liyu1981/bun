@@ -104,6 +104,18 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "my bun build debug single_output",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--bun", "--install=fallback", "build.ts"],
+      "cwd": "${workspaceFolder}/../buntest/single_output",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "sharp",
       "program": "bun-debug",
       "args": ["install", "sharp"],
@@ -465,7 +477,7 @@
       "name": "Windows: bun run [file]",
       "program": "${workspaceFolder}/build/bun-debug.exe",
       "args": ["run", "${file}"],
-      "cwd": "${fileDirname}",
-    },
+      "cwd": "${fileDirname}"
+    }
   ]
 }

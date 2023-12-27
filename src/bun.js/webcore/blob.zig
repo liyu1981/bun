@@ -3489,9 +3489,10 @@ pub const Blob = struct {
         callframe: *JSC.CallFrame,
     ) callconv(.C) JSC.JSValue {
         const thisValue = callframe.this();
-        if (Blob.streamGetCached(thisValue)) |cached| {
-            return cached;
-        }
+        // liyu: seriously this?? there is no definition of Blob.streamGetCached anywhere.
+        // if (Blob.streamGetCached(thisValue)) |cached| {
+        //     return cached;
+        // }
         var recommended_chunk_size: SizeType = 0;
         var arguments_ = callframe.arguments(2);
         var arguments = arguments_.ptr[0..arguments_.len];
