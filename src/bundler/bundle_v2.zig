@@ -1695,7 +1695,8 @@ pub const BundleV2 = struct {
 
     pub fn deinit(this: *BundleV2) void {
         if (this.bundler.resolver.in_bundler_thread) {
-            defer this.bundler.resolver.dir_cache.deinit();
+            this.bundler.resolver.getPackageManager().deinitLockfile(std.Thread.getCurrentId());
+            this.bundler.resolver.dir_cache.deinit();
         }
         defer this.graph.ast.deinit(bun.default_allocator);
         defer this.graph.input_files.deinit(bun.default_allocator);
