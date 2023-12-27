@@ -220,7 +220,8 @@
     "xmemory": "cpp",
     "xstring": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
+    "xutility": "cpp",
+    "*.inc": "cpp"
   },
   "C_Cpp.errorSquiggles": "enabled",
   "eslint.workingDirectories": ["packages/bun-types"],

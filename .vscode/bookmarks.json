@@ -144,6 +144,16 @@
 					"label": ""
 				}
 			]
+		},
+		{
+			"path": "src/bun.js/bindings/sqlite/JSSQLStatement.cpp",
+			"bookmarks": [
+				{
+					"line": 1264,
+					"column": 0,
+					"label": "sqlite all method"
+				}
+			]
 		}
 	]
 }

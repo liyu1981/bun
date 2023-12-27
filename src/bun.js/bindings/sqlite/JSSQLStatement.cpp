@@ -1509,6 +1509,51 @@ JSC_DEFINE_HOST_FUNCTION(jsSQLStatementExecuteStatementFunctionRows, (JSC::JSGlo
     RELEASE_AND_RETURN(scope, JSC::JSValue::encode(result));
 }
 
+inline int64_t _hack_sqlite3_last_insert_rowid(sqlite3* db)
+{
+    /*
+        unfortunately
+          `sqlite3_int64 sqlite3_last_insert_rowid(sqlite3*)`
+        currently is not available in arm64 build of sqlite3, so in order to
+        access lastRowid, we need to hack a bit.
+
+        as written in sqlite3.c,
+        (search `SQLITE_API sqlite_int64 sqlite3_last_insert_rowid(sqlite3 *db){`),
+        sqlite3_last_insert_rowid is implemented as just return db->lastRowid,
+        so we try to hack a solution in the same way.
+
+        unfortunately again, sqlite3.h does not provide the definition of
+        struct sqlite3, only define it as opaque pointer.
+
+        so by searching in sqlite3.c, found struct sqlite3 is defined as
+
+        struct sqlite3 {
+            sqlite3_vfs *pVfs;
+            struct Vdbe *pVdbe;
+            CollSeq *pDfltColl;
+            sqlite3_mutex *mutex;
+            Db *aDb;
+            int nDb;
+            u32 mDbFlags;
+            u64 flags;
+            i64 lastRowid;
+            ...
+        }
+
+        offset to lastRowid:
+            sizeof(void*) * 5 + sizeof(int) + sizeof(u32) + sizeof(u64)
+        lastRowid size:
+            sizeof(i64)
+
+        so we can get lastRowid in following hacky way (assume db is our sqlite*)
+
+        *(i64*)((db + (sizeof(ptr)*5 + sizeof(int) + sizeof(u32) + sizeof(u64)))
+    */
+    // use sqlite3* to calculate ptr size as it is defined as opaque
+    int offset = sizeof(sqlite3*) * 5 + sizeof(int) + sizeof(uint32_t) + sizeof(uint64_t);
+    return *(int64_t*)((uint8_t*)db + offset);
+}
+
 JSC_DEFINE_HOST_FUNCTION(jsSQLStatementExecuteStatementFunctionRun, (JSC::JSGlobalObject * lexicalGlobalObject, JSC::CallFrame* callFrame))
 {
 
@@ -1545,13 +1590,29 @@ JSC_DEFINE_HOST_FUNCTION(jsSQLStatementExecuteStatementFunctionRun, (JSC::JSGlob
         status = sqlite3_step(stmt);
     }
 
+    // return changes & lastInsertRowid just like better-sqlite3
+    // https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#runbindparameters---object
+    auto* db = castedThis->version_db->db;
+    int changes = sqlite3_changes(db);
+    int64_t last_row_id = _hack_sqlite3_last_insert_rowid(db);
+    JSC::JSObject* result = JSC::constructEmptyObject(
+        lexicalGlobalObject,
+        lexicalGlobalObject->objectPrototype(),
+        std::min(static_cast<unsigned>(1), JSFinalObject::maxInlineCapacity));
+    auto s_changes = JSC::JSValue(JSC::jsString(vm, String("changes"_s)));
+    auto s_last_row_id = JSC::JSValue(JSC::jsString(vm, String("lastInsertRowid"_s)));
+    auto k_changes = s_changes.toPropertyKey(lexicalGlobalObject);
+    auto k_last_row_id = s_last_row_id.toPropertyKey(lexicalGlobalObject);
+    result->putDirect(vm, k_changes, jsNumber(changes), 0);
+    result->putDirect(vm, k_last_row_id, jsNumber(last_row_id), 0);
+
     if (UNLIKELY(status != SQLITE_DONE && status != SQLITE_OK)) {
         sqlite3_reset(stmt);
         throwException(lexicalGlobalObject, scope, createError(lexicalGlobalObject, WTF::String::fromUTF8(sqlite3_errstr(status))));
         return JSValue::encode(jsUndefined());
     }
 
-    RELEASE_AND_RETURN(scope, JSC::JSValue::encode(jsUndefined()));
+    RELEASE_AND_RETURN(scope, JSC::JSValue::encode(JSValue(result)));
 }
 
 JSC_DEFINE_HOST_FUNCTION(jsSQLStatementToStringFunction, (JSC::JSGlobalObject * lexicalGlobalObject, JSC::CallFrame* callFrame))

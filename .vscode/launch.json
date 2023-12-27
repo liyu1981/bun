@@ -116,6 +116,18 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "my bun build debug sqlite_test",
+      "program": "${workspaceFolder}/build/bun-debug",
+      "args": ["run", "--bun", "--install=fallback", "index.js"],
+      "cwd": "${workspaceFolder}/../buntest/sqlite_test",
+      "console": "internalConsole",
+      "env": {
+        "BUN_CONFIG_MINIFY_WHITESPACE": "1"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "sharp",
       "program": "bun-debug",
       "args": ["install", "sharp"],
