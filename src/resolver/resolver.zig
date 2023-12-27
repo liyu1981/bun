@@ -561,34 +561,40 @@ pub const Resolver = struct {
     /// over "module" in package.json
     prefer_module_field: bool = true,
 
-    // indicator for whether this resolver is used in a thread (like from build.ts)
-    in_thread: bool = false,
-
-    // For in thread usage of dir_cache as DirInfo.HashMap is global and in BSS
-    dir_cache_thread: *ThreadHashMap = undefined,
+    /// When resolver is created inside Bundler thread, this is true
+    in_bundler_thread: bool = false,
 
     pub fn getPackageManager(this: *Resolver) *PackageManager {
-        return this.package_manager orelse brk: {
-            bun.HTTPThread.init() catch unreachable;
-            const pm = PackageManager.initWithRuntime(
-                this.log,
-                this.opts.install,
-                // liyu: Do not use this.allocator but bun.default_allocator here because
-                // 1. if this is not in the thread, resolver should have already in using
-                //    bun.default_allocator
-                // 2. if this is in build thread, resolver is using Threadlocal allocator,
-                //    but for our package manager (as it is shared service) should use
-                //    bun.default_allocator
-                // TODO: valgrind this change, is it right? no leaks?
-                this.allocator,
-                // bun.default_allocator,
-                .{},
-                this.env_loader.?,
-            ) catch @panic("Failed to initialize package manager");
-            pm.onWake = this.onWakePackageManager;
-            this.package_manager = pm;
-            break :brk pm;
-        };
+        if (this.in_bundler_thread) {
+            // when in thread we reuse the global package manager
+            return this.package_manager orelse brk: {
+                const pm = &PackageManager.instance;
+                this.package_manager = pm;
+                break :brk pm;
+            };
+        } else {
+            return this.package_manager orelse brk: {
+                bun.HTTPThread.init() catch unreachable;
+                const pm = PackageManager.initWithRuntime(
+                    this.log,
+                    this.opts.install,
+                    // liyu: Do not use this.allocator but bun.default_allocator here because
+                    // 1. if this is not in the thread, resolver should have already in using
+                    //    bun.default_allocator
+                    // 2. if this is in build thread, resolver is using Threadlocal allocator,
+                    //    but for our package manager (as it is shared service) should use
+                    //    bun.default_allocator
+                    // TODO: valgrind this change, is it right? no leaks?
+                    // this.allocator,
+                    bun.default_allocator,
+                    .{},
+                    this.env_loader.?,
+                ) catch @panic("Failed to initialize package manager");
+                pm.onWake = this.onWakePackageManager;
+                this.package_manager = pm;
+                break :brk pm;
+            };
+        }
     }
 
     pub inline fn usePackageManager(self: *const ThisResolver) bool {
@@ -1575,11 +1581,7 @@ pub const Resolver = struct {
     pub fn bustDirCache(r: *ThisResolver, path: string) void {
         dev("Bust {s}", .{path});
         r.fs.fs.bustEntriesCache(path);
-        if (r.in_thread) {
-            r.dir_cache_thread.remove(path);
-        } else {
-            r.dir_cache.remove(path);
-        }
+        r.dir_cache.remove(path);
     }
 
     pub fn loadNodeModules(
@@ -2047,15 +2049,11 @@ pub const Resolver = struct {
     ) !?*DirInfo {
         std.debug.assert(r.package_manager != null);
 
-        var dir_cache_info_result = try if (r.in_thread) r.dir_cache_thread.getOrPut(dir_path) else r.dir_cache.getOrPut(dir_path);
+        var dir_cache_info_result = try r.dir_cache.getOrPut(dir_path);
 
         if (dir_cache_info_result.status == .exists) {
             // we've already looked up this package before
-            if (r.in_thread) {
-                return r.dir_cache_thread.atIndex(dir_cache_info_result.index).?;
-            } else {
-                return r.dir_cache.atIndex(dir_cache_info_result.index).?;
-            }
+            return r.dir_cache.atIndex(dir_cache_info_result.index).?;
         }
         var rfs = &r.fs.fs;
         var cached_dir_entry_result = rfs.entries.getOrPut(dir_path) catch unreachable;
@@ -2124,7 +2122,7 @@ pub const Resolver = struct {
 
         // We must initialize it as empty so that the result index is correct.
         // This is important so that browser_scope has a valid index.
-        var dir_info_ptr = try if (r.in_thread) r.dir_cache_thread.put(&dir_cache_info_result, .{}) else r.dir_cache.put(&dir_cache_info_result, .{});
+        var dir_info_ptr = try r.dir_cache.put(&dir_cache_info_result, .{});
 
         try r.dirInfoUncached(
             dir_info_ptr,
@@ -2511,11 +2509,7 @@ pub const Resolver = struct {
         r: *ThisResolver,
         path: string,
     ) ?*DirInfo {
-        if (r.in_thread) {
-            return r.dir_cache_thread.get(path);
-        } else {
-            return r.dir_cache.get(path);
-        }
+        return r.dir_cache.get(path);
     }
 
     inline fn isDotSlash(path: string) bool {
@@ -2532,13 +2526,9 @@ pub const Resolver = struct {
         if (isDotSlash(_path) or strings.eqlComptime(_path, "."))
             _path = r.fs.top_level_dir;
 
-        const top_result = try if (r.in_thread) r.dir_cache_thread.getOrPut(_path) else r.dir_cache.getOrPut(_path);
+        const top_result = try r.dir_cache.getOrPut(_path);
         if (top_result.status != .unknown) {
-            if (r.in_thread) {
-                return r.dir_cache_thread.atIndex(top_result.index);
-            } else {
-                return r.dir_cache.atIndex(top_result.index);
-            }
+            return r.dir_cache.atIndex(top_result.index);
         }
 
         var dir_info_uncached_path_buf = bufs(.dir_info_uncached_path);
@@ -2683,7 +2673,7 @@ pub const Resolver = struct {
                     => return null,
 
                     else => {
-                        const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
+                        var cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
                         r.dir_cache.markNotFound(queue_top.result);
                         rfs.entries.markNotFound(cached_dir_entry_result);
                         if (comptime enable_logging) {
@@ -2783,7 +2773,8 @@ pub const Resolver = struct {
 
             // We must initialize it as empty so that the result index is correct.
             // This is important so that browser_scope has a valid index.
-            const dir_info_ptr = try r.dir_cache.put(&queue_top.result, DirInfo{});
+            var dir_info_ptr = try r.dir_cache.put(&queue_top.result, DirInfo{});
+            const parent_ptr = r.dir_cache.atIndex(top_parent.index);
 
             try r.dirInfoUncached(
                 dir_info_ptr,

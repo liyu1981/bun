@@ -1619,12 +1619,8 @@ pub const BundleV2 = struct {
         bundler.options.global_cache = config.install;
         bundler.resolver.opts.global_cache = config.install;
         bundler.resolver.env_loader = bundler.env;
-        // in thread we use a seperate dirinfo cache inited on thread arena
-        // allocator as resolver.zig:597 always use bun.default_allocator,
-        // which will cause when bundle in thread & auto_install crash
-        bundler.resolver.in_thread = true;
-        bundler.resolver.dir_cache_thread = try allocator.create(ThreadHashMap);
-        bundler.resolver.dir_cache_thread.* = ThreadHashMap.init(allocator);
+        // make resolver to know it is insdie bundler thread (so that it will reuse global package manager)
+        bundler.resolver.in_bundler_thread = true;
 
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;
