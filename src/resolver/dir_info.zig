@@ -71,8 +71,8 @@ pub const Flags = enum {
     pub const Set = std.enums.EnumSet(Flags);
 };
 
-pub fn hasParentPackage(this: *const DirInfo) bool {
-    const parent = this.getParent() orelse return false;
+pub fn hasParentPackage(this: *const DirInfo, map: HashMap) bool {
+    const parent = this.getParent(map) orelse return false;
     return !parent.isNodeModules();
 }
 

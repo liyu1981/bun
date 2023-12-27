@@ -9474,7 +9474,7 @@ pub const PackageManager = struct {
             try PATH.appendSlice(strings.withoutTrailingSlash(dir.abs_path));
             try PATH.append(std.fs.path.sep);
             try PATH.appendSlice(this.options.bin_path);
-            current_dir = dir.getParent();
+            current_dir = dir.getParent(this_bundler.resolver.dir_cache);
         }
 
         if (original_path.len > 0) {
