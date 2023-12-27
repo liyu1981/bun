@@ -1956,11 +1956,11 @@ pub const PackageManager = struct {
         this.lockfile_map.put(thread_id, lockfile_) catch unreachable;
     }
 
-    pub fn deinitLockfile(this: *PackageManager, thread_id: std.Thread.ID) void {
+    pub fn deinitLockfile(this: *PackageManager, thread_id: std.Thread.Id) void {
         if(this.lockfile_map.get(thread_id)) |lockfile_| {
             defer lockfile_.allocator.destroy(lockfile_);
             defer lockfile_.deinit();
-            this.lockfile_map.remove(thread_id);
+            _ = this.lockfile_map.remove(thread_id);
         }
     }
 
@@ -6393,7 +6393,9 @@ pub const PackageManager = struct {
                 log,
                 lockfile_path_z,
             )) {
-                .ok => |load| manager.updateLockfile(std.Thread.getCurrentId(), load.lockfile),
+                // actually we need do nothing here if ok, as loadFromDisk will mutate the lockfile itself
+                .ok => |load| _ = load,
+                // .ok => |load| manager.updateLockfile(std.Thread.getCurrentId(), load.lockfile),
                 else => try manager.getLockfile().initEmpty(allocator),
             }
         } else {
@@ -6435,7 +6437,7 @@ pub const PackageManager = struct {
                 log,
                 lockfile_path_z,
             )) {
-                .ok => |load| this.updateLockfile(std.Thread.getCurrentId(), load.lockfile),
+                .ok => |load| _ = load,
                 else => try this.getLockfile().initEmpty(allocator),
             }
         } else {

@@ -44,22 +44,22 @@
 			"path": "src/install/install.zig",
 			"bookmarks": [
 				{
-					"line": 2443,
+					"line": 2480,
 					"column": 0,
 					"label": "singlton package manager instance"
 				},
 				{
-					"line": 2540,
+					"line": 2577,
 					"column": 0,
 					"label": ""
 				},
 				{
-					"line": 2573,
+					"line": 2610,
 					"column": 0,
 					"label": ""
 				},
 				{
-					"line": 6234,
+					"line": 6271,
 					"column": 0,
 					"label": "package manager waiter "
 				}
