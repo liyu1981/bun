@@ -1,0 +1,209 @@
+{
+	"files": [
+		{
+			"path": "src/bundler/bundle_v2.zig",
+			"bookmarks": [
+				{
+					"line": 2638,
+					"column": 39,
+					"label": "parser start when use bundle_v2"
+				}
+			]
+		},
+		{
+			"path": "src/bun.zig",
+			"bookmarks": [
+				{
+					"line": 5,
+					"column": 0,
+					"label": "bun.default_allocator"
+				},
+				{
+					"line": 1042,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 2215,
+					"column": 0,
+					"label": "bun.Generation is defined as simple u16"
+				}
+			]
+		},
+		{
+			"path": "src/bun.js/javascript.zig",
+			"bookmarks": [
+				{
+					"line": 622,
+					"column": 0,
+					"label": "JS VM saved as threadlocal here"
+				}
+			]
+		},
+		{
+			"path": "src/install/install.zig",
+			"bookmarks": [
+				{
+					"line": 2443,
+					"column": 0,
+					"label": "singlton package manager instance"
+				},
+				{
+					"line": 2540,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 2573,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 6234,
+					"column": 0,
+					"label": "package manager waiter "
+				}
+			]
+		},
+		{
+			"path": "src/http.zig",
+			"bookmarks": [
+				{
+					"line": 799,
+					"column": 0,
+					"label": "http thread infinite loop"
+				}
+			]
+		},
+		{
+			"path": "src/bun_js.zig",
+			"bookmarks": [
+				{
+					"line": 153,
+					"column": 0,
+					"label": "when default js vm starts, its allocator is arena allocator too"
+				}
+			]
+		},
+		{
+			"path": "src/resolver/resolver.zig",
+			"bookmarks": [
+				{
+					"line": 810,
+					"column": 0,
+					"label": "resolveAndAutoInstall where magic starts"
+				},
+				{
+					"line": 935,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 1129,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 1214,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 1348,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 1748,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 1751,
+					"column": 0,
+					"label": "this is the magic"
+				},
+				{
+					"line": 1851,
+					"column": 0,
+					"label": "here is where auto install starts"
+				},
+				{
+					"line": 2365,
+					"column": 0,
+					"label": "resolver loadNodeModules"
+				},
+				{
+					"line": 2498,
+					"column": 0,
+					"label": ""
+				},
+				{
+					"line": 3770,
+					"column": 0,
+					"label": "dir cache entry change starts here"
+				}
+			]
+		},
+		{
+			"path": "packages/bun-usockets/src/eventing/epoll_kqueue.c",
+			"bookmarks": [
+				{
+					"line": 150,
+					"column": 0,
+					"label": "internal dispatch ready poll"
+				}
+			]
+		},
+		{
+			"path": "src/bun.js/module_loader.zig",
+			"bookmarks": [
+				{
+					"line": 217,
+					"column": 0,
+					"label": "when need transpile another local js/ts file, immediately spawn bun pool"
+				}
+			]
+		},
+		{
+			"path": "src/bun.js/event_loop.zig",
+			"bookmarks": [
+				{
+					"line": 603,
+					"column": 0,
+					"label": "js vm event loop"
+				}
+			]
+		},
+		{
+			"path": "src/thread_pool.zig",
+			"bookmarks": [
+				{
+					"line": 695,
+					"column": 0,
+					"label": "bun worker pool starts here"
+				}
+			]
+		},
+		{
+			"path": "src/work_pool.zig",
+			"bookmarks": [
+				{
+					"line": 6,
+					"column": 0,
+					"label": "JSC.WorkPool is here"
+				}
+			]
+		},
+		{
+			"path": "src/bundler.zig",
+			"bookmarks": [
+				{
+					"line": 1917,
+					"column": 0,
+					"label": ""
+				}
+			]
+		}
+	]
+}

@@ -1625,8 +1625,7 @@ pub const BundleV2 = struct {
         // TODO: this may be safe for single bundler job, but what if concurrent?
         // use thread allocated DirInfo.ThreadHashMap
         bundler.resolver.dir_cache = DirInfo.HashMap.init(allocator, .thread);
-
-        try bundler.resolver.getPackageManager().resetLockfile();
+        // try bundler.resolver.getPackageManager().resetLockfile();
 
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;

@@ -838,7 +838,7 @@ pub const PackageJSON = struct {
                                 r.log,
                             )) |dependency_version| {
                                 if (dependency_version.value.npm.version.isExact()) {
-                                    if (pm.lockfile.resolve(package_json.name, dependency_version)) |resolved| {
+                                    if (pm.getLockfile().resolve(package_json.name, dependency_version)) |resolved| {
                                         package_json.package_manager_package_id = resolved;
                                         if (resolved > 0) {
                                             break :update_dependencies;
