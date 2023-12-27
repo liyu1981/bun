@@ -1623,7 +1623,8 @@ pub const BundleV2 = struct {
         // allocator as resolver.zig:597 always use bun.default_allocator,
         // which will cause when bundle in thread & auto_install crash
         bundler.resolver.in_thread = true;
-        bundler.resolver.dir_cache_thread = ThreadHashMap.init(allocator);
+        bundler.resolver.dir_cache_thread = try allocator.create(ThreadHashMap);
+        bundler.resolver.dir_cache_thread.* = ThreadHashMap.init(allocator);
 
         bundler.options.jsx = config.jsx;
         bundler.options.no_macros = config.no_macros;

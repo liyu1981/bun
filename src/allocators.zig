@@ -725,10 +725,11 @@ pub fn ThreadHashMap(comptime ValueType: type, comptime count: anytype, comptime
         backing_buf: [count]ValueType = undefined,
         backing_buf_used: u16 = 0,
 
-        pub fn init(allocator: std.mem.Allocator) *Self {
-            const m = allocator.create(Self) catch unreachable;
-            m.index = IndexMapManaged.init(allocator);
-            return m;
+        pub fn init(allocator: std.mem.Allocator) Self {
+            return Self{
+                .allocator = allocator,
+                .index = IndexMapManaged.init(allocator),
+            };
         }
 
         pub fn isOverflowing(self: *Self) bool {
