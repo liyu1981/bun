@@ -44,22 +44,22 @@
 			"path": "src/install/install.zig",
 			"bookmarks": [
 				{
-					"line": 2480,
+					"line": 2484,
 					"column": 0,
 					"label": "singlton package manager instance"
 				},
 				{
-					"line": 2577,
+					"line": 2581,
 					"column": 0,
 					"label": ""
 				},
 				{
-					"line": 2610,
+					"line": 2614,
 					"column": 0,
 					"label": ""
 				},
 				{
-					"line": 6271,
+					"line": 6275,
 					"column": 0,
 					"label": "package manager waiter "
 				}
@@ -82,66 +82,6 @@
 					"line": 153,
 					"column": 0,
 					"label": "when default js vm starts, its allocator is arena allocator too"
-				}
-			]
-		},
-		{
-			"path": "src/resolver/resolver.zig",
-			"bookmarks": [
-				{
-					"line": 810,
-					"column": 0,
-					"label": "resolveAndAutoInstall where magic starts"
-				},
-				{
-					"line": 935,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 1129,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 1214,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 1348,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 1748,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 1751,
-					"column": 0,
-					"label": "this is the magic"
-				},
-				{
-					"line": 1851,
-					"column": 0,
-					"label": "here is where auto install starts"
-				},
-				{
-					"line": 2365,
-					"column": 0,
-					"label": "resolver loadNodeModules"
-				},
-				{
-					"line": 2498,
-					"column": 0,
-					"label": ""
-				},
-				{
-					"line": 3770,
-					"column": 0,
-					"label": "dir cache entry change starts here"
 				}
 			]
 		},

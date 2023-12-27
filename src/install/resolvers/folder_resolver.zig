@@ -30,10 +30,10 @@ pub const FolderResolution = union(Tag) {
 
         pub fn format(this: PackageWorkspaceSearchPathFormatter, comptime fmt: []const u8, opts: std.fmt.FormatOptions, writer: anytype) !void {
             var joined: [bun.MAX_PATH_BYTES + 2]u8 = undefined;
-            const str_to_use = this.manager.lockfile.workspace_paths.getPtr(
-                @truncate(String.Builder.stringHash(this.manager.lockfile.str(&this.version.value.workspace))),
+            const str_to_use = this.manager.getLockfile().workspace_paths.getPtr(
+                @truncate(String.Builder.stringHash(this.manager.getLockfile().str(&this.version.value.workspace))),
             ) orelse &this.version.value.workspace;
-            var paths = normalizePackageJSONPath(.{ .relative = .workspace }, joined[2..], this.manager.lockfile.str(str_to_use));
+            var paths = normalizePackageJSONPath(.{ .relative = .workspace }, joined[2..], this.manager.getLockfile().str(str_to_use));
 
             if (!strings.startsWithChar(paths.rel, '.') and !strings.startsWithChar(paths.rel, std.fs.path.sep)) {
                 joined[0..2].* = ("." ++ std.fs.path.sep_str).*;
@@ -175,7 +175,7 @@ pub const FolderResolution = union(Tag) {
         const source = logger.Source.initPathString(abs, body.data.list.items[0..source_buf]);
 
         try package.parse(
-            manager.lockfile,
+            manager.getLockfile(),
             manager.allocator,
             manager.log,
             source,
@@ -184,13 +184,13 @@ pub const FolderResolution = union(Tag) {
             features,
         );
 
-        if (manager.lockfile.getPackageID(package.name_hash, version, &package.resolution)) |existing_id| {
+        if (manager.getLockfile().getPackageID(package.name_hash, version, &package.resolution)) |existing_id| {
             package.meta.id = existing_id;
-            manager.lockfile.packages.set(existing_id, package);
-            return manager.lockfile.packages.get(existing_id);
+            manager.getLockfile().packages.set(existing_id, package);
+            return manager.getLockfile().packages.get(existing_id);
         }
 
-        return manager.lockfile.appendPackage(package);
+        return manager.getLockfile().appendPackage(package);
     }
 
     pub const GlobalOrRelative = union(enum) {

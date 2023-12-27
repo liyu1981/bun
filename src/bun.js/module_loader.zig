@@ -704,7 +704,7 @@ pub const ModuleLoader = struct {
 
             pub fn onDependencyError(ctx: *anyopaque, dependency: Dependency, root_dependency_id: Install.DependencyID, err: anyerror) void {
                 var this = bun.cast(*Queue, ctx);
-                debug("onDependencyError: {s}", .{this.vm().packageManager().lockfile.str(&dependency.name)});
+                debug("onDependencyError: {s}", .{this.vm().packageManager().getLockfile().str(&dependency.name)});
 
                 var modules: []AsyncModule = this.map.items;
                 var i: usize = 0;
@@ -717,7 +717,7 @@ pub const ModuleLoader = struct {
                             this.vm(),
                             module.parse_result.pending_imports.items(.import_record_id)[dep_i],
                             .{
-                                .name = this.vm().packageManager().lockfile.str(&dependency.name),
+                                .name = this.vm().packageManager().getLockfile().str(&dependency.name),
                                 .err = err,
                                 .url = "",
                                 .version = dependency.version,
@@ -839,7 +839,7 @@ pub const ModuleLoader = struct {
             ) void {
                 debug("onPackageDownloadError: {s}", .{name});
 
-                const resolution_ids = this.vm().packageManager().lockfile.buffers.resolutions.items;
+                const resolution_ids = this.vm().packageManager().getLockfile().buffers.resolutions.items;
                 var modules: []AsyncModule = this.map.items;
                 var i: usize = 0;
                 outer: for (modules) |module_| {
@@ -883,7 +883,7 @@ pub const ModuleLoader = struct {
                     var done_count: usize = 0;
                     for (tags, 0..) |tag, tag_i| {
                         const root_id = root_dependency_ids[tag_i];
-                        const resolution_ids = pm.lockfile.buffers.resolutions.items;
+                        const resolution_ids = pm.getLockfile().buffers.resolutions.items;
                         if (root_id >= resolution_ids.len) continue;
                         const package_id = resolution_ids[root_id];
 
@@ -911,10 +911,10 @@ pub const ModuleLoader = struct {
                             continue;
                         }
 
-                        const package = pm.lockfile.packages.get(package_id);
+                        const package = pm.getLockfile().packages.get(package_id);
                         std.debug.assert(package.resolution.tag != .root);
 
-                        switch (pm.determinePreinstallState(package, pm.lockfile)) {
+                        switch (pm.determinePreinstallState(package, pm.getLockfile())) {
                             .done => {
                                 // we are only truly done if all the dependencies are done.
                                 const current_tasks = pm.total_tasks;
@@ -1124,7 +1124,7 @@ pub const ModuleLoader = struct {
                     break :brk std.fmt.allocPrint(
                         bun.default_allocator,
                         "{s} '{s}' for package '{s}' (but package exists)",
-                        .{ prefix, vm.packageManager().lockfile.str(&result.version.literal), result.name },
+                        .{ prefix, vm.packageManager().getLockfile().str(&result.version.literal), result.name },
                     );
                 },
                 else => |err| std.fmt.allocPrint(
@@ -1171,7 +1171,7 @@ pub const ModuleLoader = struct {
 
             const msg_args = .{
                 result.name,
-                result.resolution.fmt(vm.packageManager().lockfile.buffers.string_bytes.items),
+                result.resolution.fmt(vm.packageManager().getLockfile().buffers.string_bytes.items),
             };
 
             const msg: []u8 = try switch (result.err) {
@@ -1221,7 +1221,7 @@ pub const ModuleLoader = struct {
                     .{
                         bun.asByteSlice(@errorName(err)),
                         result.name,
-                        result.resolution.fmt(vm.packageManager().lockfile.buffers.string_bytes.items),
+                        result.resolution.fmt(vm.packageManager().getLockfile().buffers.string_bytes.items),
                     },
                 ),
             };

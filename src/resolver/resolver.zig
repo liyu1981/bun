@@ -1808,12 +1808,12 @@ pub const Resolver = struct {
                         const resolve_from_lockfile = package_json.package_manager_package_id != Install.invalid_package_id;
 
                         if (resolve_from_lockfile) {
-                            const deps = manager.lockfile.packages.items(.dependencies);
+                            const deps = manager.getLockfile().packages.items(.dependencies);
                             const dependencies = &deps[package_json.package_manager_package_id];
 
                             // try to find this package name in the dependencies of the enclosing package
-                            dependencies_list = dependencies.get(manager.lockfile.buffers.dependencies.items);
-                            string_buf = manager.lockfile.buffers.string_bytes.items;
+                            dependencies_list = dependencies.get(manager.getLockfile().buffers.dependencies.items);
+                            string_buf = manager.getLockfile().buffers.string_bytes.items;
                         } else if (esm_.?.version.len == 0) {
                             // If you don't specify a version, default to the one chosen in your package.json
                             dependencies_list = package_json.dependencies.map.values();
@@ -1830,10 +1830,10 @@ pub const Resolver = struct {
                             dependency_behavior = dependency.behavior;
 
                             if (resolve_from_lockfile) {
-                                const resolutions = &manager.lockfile.packages.items(.resolutions)[package_json.package_manager_package_id];
+                                const resolutions = &manager.getLockfile().packages.items(.resolutions)[package_json.package_manager_package_id];
 
                                 // found it!
-                                break :brk resolutions.get(manager.lockfile.buffers.resolutions.items)[dependency_id];
+                                break :brk resolutions.get(manager.getLockfile().buffers.resolutions.items)[dependency_id];
                             }
 
                             break;
@@ -1877,13 +1877,13 @@ pub const Resolver = struct {
                             ) orelse break :load_module_from_cache;
                         }
 
-                        if (manager.lockfile.resolve(esm.name, dependency_version)) |id| {
+                        if (manager.getLockfile().resolve(esm.name, dependency_version)) |id| {
                             resolved_package_id = id;
                         }
                     }
 
                     if (resolved_package_id != Install.invalid_package_id) {
-                        break :brk manager.lockfile.packages.items(.resolution)[resolved_package_id];
+                        break :brk manager.getLockfile().packages.items(.resolution)[resolved_package_id];
                     }
 
                     // unsupported or not found dependency, we might need to install it to the cache
@@ -1906,7 +1906,7 @@ pub const Resolver = struct {
                 const dir_path_for_resolution = manager.pathForResolution(resolved_package_id, resolution, bufs(.path_in_global_disk_cache)) catch |err| {
                     // if it's missing, we need to install it
                     if (err == error.FileNotFound) {
-                        switch (manager.getPreinstallState(resolved_package_id, manager.lockfile)) {
+                        switch (manager.getPreinstallState(resolved_package_id, manager.getLockfile())) {
                             .done => {
                                 var path = Fs.Path.init(import_path);
                                 path.is_disabled = true;
@@ -1931,10 +1931,10 @@ pub const Resolver = struct {
                                 if (st == .extract)
                                     manager.enqueuePackageForDownload(
                                         esm.name,
-                                        manager.lockfile.buffers.legacyPackageToDependencyID(null, resolved_package_id) catch unreachable,
+                                        manager.getLockfile().buffers.legacyPackageToDependencyID(null, resolved_package_id) catch unreachable,
                                         resolved_package_id,
                                         resolution.value.npm.version,
-                                        manager.lockfile.str(&resolution.value.npm.url),
+                                        manager.getLockfile().str(&resolution.value.npm.url),
                                         .{
                                             .root_request_id = 0,
                                         },
@@ -2184,18 +2184,18 @@ pub const Resolver = struct {
         var pm = r.getPackageManager();
         if (comptime Environment.allow_assert) {
             // we should never be trying to resolve a dependency that is already resolved
-            std.debug.assert(pm.lockfile.resolve(esm.name, version) == null);
+            std.debug.assert(pm.getLockfile().resolve(esm.name, version) == null);
         }
 
         // Add the containing package to the lockfile
 
         var package: Package = .{};
 
-        const is_main = pm.lockfile.packages.len == 0 and input_package_id == Install.invalid_package_id;
+        const is_main = pm.getLockfile().packages.len == 0 and input_package_id == Install.invalid_package_id;
         if (is_main) {
             if (package_json_) |package_json| {
                 package = Package.fromPackageJSON(
-                    pm.lockfile,
+                    pm.getLockfile(),
                     package_json,
                     Install.Features{
                         .dev_dependencies = true,
@@ -2206,7 +2206,7 @@ pub const Resolver = struct {
                 ) catch |err| {
                     return .{ .failure = err };
                 };
-                package = pm.lockfile.appendPackage(package) catch |err| {
+                package = pm.getLockfile().appendPackage(package) catch |err| {
                     return .{ .failure = err };
                 };
                 package_json.package_manager_package_id = package.meta.id;
@@ -2220,7 +2220,7 @@ pub const Resolver = struct {
                         .value = .{ .root = {} },
                     },
                 };
-                package = pm.lockfile.appendPackage(package) catch |err| {
+                package = pm.getLockfile().appendPackage(package) catch |err| {
                     return .{ .failure = err };
                 };
             }
@@ -2229,7 +2229,7 @@ pub const Resolver = struct {
         if (r.opts.prefer_offline_install) {
             if (pm.resolveFromDiskCache(esm.name, version)) |package_id| {
                 input_package_id_.* = package_id;
-                return .{ .resolution = pm.lockfile.packages.items(.resolution)[package_id] };
+                return .{ .resolution = pm.getLockfile().packages.items(.resolution)[package_id] };
             }
         }
 
